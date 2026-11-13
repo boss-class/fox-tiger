@@ -1,0 +1,1047 @@
+<!doctype html>
+<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>狐假虎威</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Noto+Serif+TC:wght@600;900&display=swap">
+<style>
+/* Layout: full-screen 3D world behind translucent paper panels; HUD floats over the world. */
+:root{
+  --bg:#f3dfaa;        /* 暖黃 */
+  --ink:#2a1d14;       /* 墨 */
+  --red:#c4352b;       /* 朱紅 */
+  --lime:#dcd6c6;      /* 石灰 */
+  --gold:#e8b94a;
+  --paper:#fbf2d6;
+  --line:#8a6a3c;
+  --serif:"Noto Serif TC","PMingLiU","Songti TC",serif;
+  --sans:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;overflow:hidden;-webkit-tap-highlight-color:transparent}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid var(--red);outline-offset:2px}
+#world{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;z-index:0}
+.screen{position:fixed;inset:0;display:none;z-index:10;flex-direction:column;align-items:center;justify-content:center;
+  padding:env(safe-area-inset-top,0px) max(16px,env(safe-area-inset-right,0px)) env(safe-area-inset-bottom,0px) max(16px,env(safe-area-inset-left,0px))}
+.screen.on{display:flex}
+.btn{background:var(--red);color:#fff8e6;border:2px solid var(--ink);border-radius:4px;padding:.6em 1.4em;font-weight:700;letter-spacing:.12em;box-shadow:3px 3px 0 var(--ink)}
+.btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+.btn.alt{background:var(--paper);color:var(--ink)}
+.btn.sm{padding:.35em .8em;font-size:.85rem;letter-spacing:.04em;box-shadow:2px 2px 0 var(--ink)}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.panel{background:var(--paper);border:2px solid var(--ink);border-radius:6px;box-shadow:6px 6px 0 rgba(42,29,20,.85);padding:clamp(14px,3vw,28px);width:min(920px,100%);max-height:calc(100% - 24px);overflow:auto}
+h1,h2,h3{font-family:var(--serif);margin:0}
+.foot{font-size:.78rem;color:var(--ink);opacity:.8;margin-top:12px;text-align:center}
+
+/* cover */
+#cover{align-items:flex-start;justify-content:center;background:linear-gradient(90deg,rgba(243,223,170,.92) 0%,rgba(243,223,170,.55) 45%,rgba(243,223,170,0) 80%)}
+#cover .wrap{display:flex;gap:clamp(16px,4vw,48px);align-items:flex-start;padding-left:clamp(0px,4vw,60px)}
+.vtitle{writing-mode:vertical-rl;font-family:var(--serif);font-weight:900;font-size:clamp(64px,15vh,140px);line-height:1.12;letter-spacing:.08em;color:var(--ink);text-shadow:3px 3px 0 var(--lime);margin:0}
+.seal{display:inline-block;background:var(--red);color:#fff8e6;font-family:var(--serif);font-weight:900;padding:.25em .4em;border-radius:3px;font-size:1.1rem;writing-mode:vertical-rl;letter-spacing:.2em}
+.coverSide{display:flex;flex-direction:column;gap:14px;padding-top:6vh;max-width:340px}
+.coverSide p{margin:0;line-height:1.7}
+.coverBtns{display:flex;flex-direction:column;gap:10px;align-items:flex-start}
+#cover .foot{position:absolute;left:max(16px,env(safe-area-inset-left,0px));bottom:calc(10px + env(safe-area-inset-bottom,0px));margin:0;text-align:left}
+.mtog{position:absolute;top:calc(12px + env(safe-area-inset-top,0px));right:max(16px,env(safe-area-inset-right,0px));display:flex;gap:8px}
+.mtog button,.hudb{background:var(--paper);border:2px solid var(--ink);border-radius:4px;padding:.3em .6em;font-size:1.05rem}
+.mtog button[aria-pressed="false"],.hudb[aria-pressed="false"]{opacity:.45;text-decoration:line-through}
+
+/* create */
+.createGrid{display:grid;grid-template-columns:minmax(0,280px) minmax(0,1fr);gap:20px}
+#prevWrap{background:var(--lime);border:2px solid var(--ink);border-radius:4px;aspect-ratio:3/4;width:100%}
+#prev{width:100%;height:100%;display:block}
+.optRow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 12px}
+.optRow label{width:4.2em;font-weight:700}
+.chip{background:#fff;border:2px solid var(--line);border-radius:3px;padding:.25em .7em;font-size:.92rem}
+.chip[aria-pressed="true"]{background:var(--red);color:#fff8e6;border-color:var(--ink)}
+.sw{width:30px;height:30px;border-radius:50%;border:3px solid var(--lime)}
+.sw[aria-pressed="true"]{border-color:var(--ink);box-shadow:0 0 0 2px var(--gold)}
+#nameIn{font:inherit;padding:.35em .6em;border:2px solid var(--ink);border-radius:3px;background:#fff;width:9em}
+@media(max-width:640px){.createGrid{grid-template-columns:1fr}#prevWrap{aspect-ratio:4/3;max-height:34vh}}
+
+/* pager (intro/story) */
+.pgHead{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:12px}
+.tag{display:inline-block;background:var(--red);color:#fff8e6;font-family:var(--serif);font-weight:900;padding:.1em .7em;border-radius:3px;letter-spacing:.2em}
+.pgBody{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:20px;align-items:start}
+.pgBody img{width:100%;border:2px solid var(--ink);border-radius:4px;display:block;background:var(--lime);aspect-ratio:16/9}
+.pgBody .txt{font-family:var(--serif);font-size:clamp(1.05rem,2.4vw,1.35rem);line-height:1.9}
+.pgNav{display:flex;justify-content:space-between;gap:10px;margin-top:16px;flex-wrap:wrap}
+.dots{display:flex;gap:5px;align-items:center}.dots i{width:9px;height:9px;border-radius:50%;background:var(--lime);border:1px solid var(--line)}.dots i.on{background:var(--red)}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.card{border:2px solid var(--ink);border-radius:4px;padding:12px;background:#fff;display:flex;gap:12px;align-items:flex-start}
+.card b{font-family:var(--serif);font-size:1.15rem}.card p{margin:.3em 0 0;line-height:1.6;font-size:.95rem}
+.glyph{flex:0 0 auto;width:46px;height:46px;background:var(--red);color:#fff8e6;font-family:var(--serif);font-weight:900;font-size:1.7rem;display:grid;place-items:center;border-radius:3px}
+.sum3{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.sum3 div{border:2px solid var(--ink);background:#fff;border-radius:4px;padding:10px;line-height:1.7}
+@media(max-width:700px){.pgBody{grid-template-columns:1fr}}
+
+/* game HUD */
+#game{justify-content:flex-start;align-items:stretch;pointer-events:none}
+#game>*{pointer-events:auto}
+#hudTop{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;padding-top:10px;flex-wrap:wrap}
+.hbox{background:rgba(251,242,214,.92);border:2px solid var(--ink);border-radius:4px;padding:6px 10px;line-height:1.4;font-size:.9rem}
+#hudGoal{font-family:var(--serif);font-weight:900;max-width:min(380px,100%)}
+#hudTokens{display:flex;gap:4px;flex-wrap:wrap;max-width:260px;justify-content:flex-end}
+.tk{width:24px;height:24px;border-radius:50%;border:2px solid var(--line);display:grid;place-items:center;font-size:.72rem;font-family:var(--serif);font-weight:900;background:var(--lime);color:#7a6a4a}
+.tk.done{background:var(--red);color:#fff8e6;border-color:var(--ink)}
+.tk.next{border-color:var(--red);background:var(--gold);color:var(--ink)}
+#hudBtns{position:absolute;left:max(16px,env(safe-area-inset-left,0px));bottom:calc(12px + env(safe-area-inset-bottom,0px));display:flex;gap:8px;flex-wrap:wrap;max-width:calc(100% - 200px)}
+#btnAct{background:var(--red);color:#fff8e6;font-weight:700;border-color:var(--ink)}
+#btnAct[disabled]{background:var(--lime);color:#7a6a4a}
+#mini{position:absolute;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(12px + env(safe-area-inset-bottom,0px));width:150px;height:150px;border:2px solid var(--ink);border-radius:4px;background:var(--paper);cursor:pointer}
+@media(max-width:700px){#mini{display:none}#hudBtns{max-width:100%}}
+#toast{position:fixed;left:50%;top:76px;transform:translateX(-50%);z-index:40;background:var(--ink);color:#fff8e6;padding:8px 16px;border-radius:4px;font-size:.95rem;max-width:calc(100% - 32px);text-align:center}
+
+/* dialog + modal */
+#dlg{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:min(760px,calc(100% - 32px));z-index:30;background:var(--paper);border:2px solid var(--ink);border-radius:6px;box-shadow:5px 5px 0 var(--ink);padding:14px 18px;min-height:110px;cursor:pointer}
+#dlgName{font-family:var(--serif);font-weight:900;color:var(--red);font-size:1.1rem}
+#dlgText{font-family:var(--serif);font-size:1.15rem;line-height:1.8;margin-top:4px;min-height:3.6em}
+#dlg small{position:absolute;right:14px;bottom:8px;opacity:.6}
+#dlgSkip{position:absolute;right:12px;top:10px}
+#modal{position:fixed;inset:0;z-index:35;background:rgba(42,29,20,.55);display:flex;align-items:center;justify-content:center;padding:max(12px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(12px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+#modalBody{position:relative;background:var(--paper);border:2px solid var(--ink);border-radius:6px;box-shadow:6px 6px 0 var(--ink);padding:clamp(14px,3vw,24px);width:min(640px,100%);max-height:100%;overflow:auto}
+.lvlist{display:grid;gap:4px;max-height:55vh;overflow:auto}
+.lvrow{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;border-bottom:1px dashed var(--line);padding:4px 0;font-variant-numeric:tabular-nums}
+.mx{position:absolute;top:10px;right:10px}
+.mhead{padding-right:104px;min-height:2em;display:flex;justify-content:space-between;font-family:var(--serif);font-weight:900;margin-bottom:10px}
+.q{font-family:var(--serif);font-size:1.25rem;line-height:1.7;margin:.4em 0 .8em}
+.opts{display:grid;gap:8px}
+.opt{background:#fff;border:2px solid var(--line);border-radius:4px;padding:.65em .9em;text-align:left;font-size:1.02rem}
+.opt:hover:not([disabled]){border-color:var(--red)}
+.opt.ok{background:#cfe6b8;border-color:#3d6b3a}.opt.no{background:#f1c3bd;border-color:var(--red)}
+.fb{min-height:3.2em;line-height:1.7;margin:.6em 0 0}
+.mfoot{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+.gauge{height:14px;background:var(--lime);border:2px solid var(--ink);border-radius:8px;overflow:hidden;margin-bottom:6px}
+.gauge i{display:block;height:100%;background:var(--gold);width:0;transition:width .4s}
+.pads{display:grid;grid-template-columns:repeat(3,92px);grid-template-rows:repeat(3,92px);gap:8px;justify-content:center;margin:12px 0}
+.pad{border:3px solid var(--ink);border-radius:8px;font-family:var(--serif);font-weight:900;font-size:1.05rem;line-height:1.25;background:var(--lime);color:var(--ink)}
+.pad.lit{background:var(--gold);transform:scale(1.07);box-shadow:0 0 18px var(--gold)}
+.pad[disabled]{cursor:default}
+#tokenPop{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;pointer-events:none}
+#tokenPop div{background:var(--paper);border:3px solid var(--red);border-radius:8px;padding:20px 34px;text-align:center;box-shadow:6px 6px 0 var(--ink);animation:pop .5s ease-out}
+#tokenPop b{display:block;font-family:var(--serif);font-size:3.4rem;color:var(--red)}
+@keyframes pop{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
+.slots{display:flex;gap:8px;justify-content:center;margin:10px 0}
+.slot{width:52px;height:52px;border:2px dashed var(--line);border-radius:4px;display:grid;place-items:center;font-family:var(--serif);font-weight:900;font-size:1.6rem;background:#fff}
+.chars{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:10px 0}
+.chb{width:60px;height:60px;border:3px solid var(--ink);border-radius:6px;background:var(--lime);font-family:var(--serif);font-weight:900;font-size:1.7rem;color:var(--ink)}
+.chb[disabled]{opacity:.25;cursor:default}
+.evs{display:grid;gap:8px}
+.seqn{display:inline-grid;place-items:center;width:1.6em;height:1.6em;background:var(--red);color:#fff8e6;border-radius:50%;margin-right:.5em;font-size:.9rem}
+.fgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:10px 0}
+.fc{min-height:68px;border:3px solid var(--ink);border-radius:6px;background:var(--red);color:#fff8e6;font-family:var(--serif);font-weight:900;font-size:1.05rem;padding:4px;line-height:1.3}
+.fc.up{background:#fff;color:var(--ink)}
+.fc.kw{background:var(--red);color:#fff8e6}
+.fc.km{background:#2e6f7e;color:#fff8e6}
+.fc.up.kw{background:var(--gold);color:var(--ink)}
+.fc.up.km{background:#bfe0e6;color:var(--ink)}
+.fc .fl{display:block;font-size:.7rem;font-weight:700;opacity:.8;letter-spacing:.1em}
+.lg{display:inline-block;padding:0 .5em;border-radius:3px;border:2px solid var(--ink);font-weight:700}
+.lg.kw{background:var(--gold)}.lg.km{background:#bfe0e6}
+.fc.done,.fc.done.kw,.fc.done.km{background:#cfe6b8;color:var(--ink);opacity:.7;cursor:default}
+.tbar{height:12px;background:var(--lime);border:2px solid var(--ink);border-radius:8px;overflow:hidden;margin-bottom:6px}
+.tbar i{display:block;height:100%;background:var(--red);width:100%}
+@media(max-width:480px){.fgrid{grid-template-columns:repeat(3,minmax(0,1fr))}.slot{width:44px;height:44px}.chb{width:52px;height:52px}}
+@media(prefers-reduced-motion:reduce){#tokenPop div{animation:none}.gauge i{transition:none}}
+
+/* summary */
+.rows{display:grid;gap:6px;margin:12px 0}
+.rows div{display:flex;justify-content:space-between;gap:10px;border-bottom:1px dashed var(--line);padding:4px 0;font-variant-numeric:tabular-nums}
+.grade{font-family:var(--serif);font-weight:900;font-size:4.5rem;color:var(--red);line-height:1;min-width:2.2em;-webkit-text-stroke:2px var(--ink);paint-order:stroke fill}
+.grade.g-SSS{color:#e6a800;text-shadow:0 0 14px #ffd24a,3px 3px 0 var(--ink)}
+.grade.g-SS,.grade.g-S{color:#ffd400}
+.grade.g-B{color:#1c7ed6}
+.grade.g-A{color:#d81e1e}
+.grade.g-C{color:#2f9e44}
+.grade.g-D{color:#8e44ad}
+.grade.g-N{color:#868e96}
+.sumTop{display:flex;gap:24px;align-items:center;flex-wrap:wrap}
+[hidden]{display:none!important}
+</style>
+
+<canvas id="world"></canvas>
+
+<section id="cover" class="screen on" aria-label="封面">
+  <div class="mtog"><button id="cvMus" aria-pressed="true" title="背景音樂">🎵</button><button id="cvMute" aria-pressed="true" title="全部聲音">♪</button></div>
+  <div class="wrap">
+    <h1 class="vtitle">狐假虎威</h1>
+    <div class="coverSide">
+      <span class="seal">國語六上</span>
+      <p>戰國策裡的一則寓言。你是楚國大臣江乙，要在楚宣王面前說出這個故事。走過竹簡路，找到狐狸與老虎，完成每一關的挑戰。</p>
+      <div class="coverBtns">
+        <button class="btn" id="cvStart">開始冒險</button>
+        <button class="btn alt" id="cvCont" hidden>繼續遊戲</button>
+        <button class="btn alt sm" id="cvReset" hidden>重新開始</button>
+      </div>
+    </div>
+  </div>
+  <p class="foot">柏師的教學世界　改編自翰林國語第八課〈狐假虎威〉</p>
+</section>
+
+<section id="create" class="screen" aria-label="角色設定">
+  <div class="panel">
+    <h2>設定你的角色</h2>
+    <p style="margin:.3em 0 14px">預設主角是替楚宣王說故事的大臣江乙，你也可以換成自己的樣子和名字。</p>
+    <div class="createGrid">
+      <div id="prevWrap"><canvas id="prev"></canvas></div>
+      <div id="opts"></div>
+    </div>
+    <div class="pgNav"><button class="btn alt" id="crBack">回封面</button><button class="btn" id="crOk">確定，認識人物</button></div>
+  </div>
+</section>
+
+<section id="intro" class="screen" aria-label="人物介紹">
+  <div class="panel">
+    <div class="pgHead"><h2 id="inTitle"></h2><span id="inNo"></span></div>
+    <div class="cards" id="inCards"></div>
+    <div class="pgNav"><button class="btn alt" id="inPrev">上一頁</button><button class="btn" id="inNext">下一頁</button></div>
+  </div>
+</section>
+
+<section id="story" class="screen" aria-label="故事導讀">
+  <div class="panel">
+    <div class="pgHead"><span class="tag" id="stTag"></span><span class="dots" id="stDots"></span></div>
+    <div class="pgBody" id="stBody"></div>
+    <div class="pgNav"><button class="btn alt" id="stPrev">上一頁</button><button class="btn alt sm" id="stSkip">略過導讀</button><button class="btn" id="stNext">下一頁</button></div>
+  </div>
+</section>
+
+<section id="game" class="screen" aria-label="遊戲地圖">
+  <div id="hudTop">
+    <div class="hbox"><b id="hudName"></b><br>已得 <span id="hudScore">0</span> 分</div>
+    <div class="hbox" id="hudGoal"></div>
+    <div id="hudTokens" class="hbox"></div>
+    <div id="hudItems" class="hbox" hidden></div>
+  </div>
+  <div id="hudBtns">
+    <button class="hudb" id="btnAct" disabled>互動 (F)</button>
+    <button class="hudb" id="btnAuto">自動導航</button>
+    <button class="hudb" id="btnMus" aria-pressed="true" title="背景音樂">🎵</button>
+    <button class="hudb" id="btnMute" aria-pressed="true" title="全部聲音">♪</button>
+    <button class="hudb" id="btnLv">選關</button>
+    <button class="hudb" id="btnSum">總結</button>
+  </div>
+  <canvas id="mini" width="300" height="300" aria-label="小地圖，可點擊移動"></canvas>
+</section>
+
+<section id="summary" class="screen" aria-label="總結">
+  <div class="panel">
+    <h2>冒險總結</h2>
+    <div class="sumTop"><div class="grade" id="sumGrade">—</div><div><div>總分 <b id="sumTotal"></b></div><div id="sumNote" style="line-height:1.7"></div></div></div>
+    <div class="rows" id="sumRows"></div>
+    <div class="pgNav"><button class="btn alt" id="sumBack">回到地圖</button><button class="btn alt" id="sumReset">重新開始</button></div>
+    <p class="foot">柏師的教學世界　改編自翰林國語第八課〈狐假虎威〉</p>
+  </div>
+</section>
+
+<div id="dlg" hidden><div id="dlgName"></div><div id="dlgText"></div><button class="btn sm alt" id="dlgSkip">略過</button><small>點一下繼續</small></div>
+<div id="modal" hidden><div id="modalBody"></div></div>
+<div id="toast" hidden></div>
+<div id="tokenPop" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+'use strict';
+if(!window.THREE){document.body.innerHTML='<p style="padding:2em;font-size:1.1rem">無法載入 Three.js，請確認網路連線後重新整理。</p>';return;}
+const T=THREE,$=s=>document.querySelector(s),$$=s=>Array.from(document.querySelectorAll(s));
+let lvTok=0,cancelRes=null;
+const sleep=ms=>{const t=lvTok;return new Promise(r=>setTimeout(()=>{if(t===lvTok)r();},ms));};
+const later=(fn,ms)=>{const t=lvTok;setTimeout(()=>{if(t===lvTok)fn();},ms);};
+const rnd=(()=>{let s=20261111;return()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296;};})();
+
+/* ================= 課程資料 ================= */
+const PLAN=[ /* 0-1 楚國（人形）／2-6 百獸村（變身、取寶物）／7-9 回楚國匯報與考核 */
+ {name:'戰國策與楚宮',type:'選擇題：背景說明',tk:'簡',tkName:'竹簡',built:true},
+ {name:'楚王問緣由',type:'選擇題：背景說明',tk:'問',tkName:'問緣令',built:true},
+ {name:'文言分類',type:'選擇題：老虎、百獸、狐狸',tk:'分',tkName:'分類令',built:true},
+ {name:'百獸點名',type:'順序記憶＋選擇題',tk:'圖',tkName:'百獸圖',built:true},
+ {name:'原文填空',type:'課文填空',tk:'文',tkName:'原文簡',built:true},
+ {name:'詞語配對',type:'翻牌配對',tk:'配',tkName:'配對玉',built:true},
+ {name:'字義快答',type:'限時快答',tk:'速',tkName:'快答旗',built:true},
+ {name:'楚宮匯報',type:'事件排序＋句子重組',tk:'序',tkName:'排序令',built:true},
+ {name:'字詞考核',type:'成語拼字＋詞語選填＋校對錯字',tk:'詞',tkName:'字詞章',built:true},
+ {name:'閱讀思辨',type:'之字分類＋閱讀理解',tk:'思',tkName:'思辨章',built:true}
+];
+const BUILT=PLAN.filter(p=>p.built).length;
+const QZ1=[
+ {q:'〈狐假虎威〉節錄自哪一本書？',opts:['戰國策','史記','論語','左傳'],a:0,why:'本文節錄自《戰國策》。'},
+ {q:'《戰國策》是由誰編纂的？',opts:['西漢劉向','東漢班固','戰國江乙','春秋孔子'],a:0,why:'戰國策是由西漢劉向所編纂。'},
+ {q:'《戰國策》記載的是什麼內容？',opts:['戰國時期各國的政治大事及君臣間的言論','春秋時期的禮儀制度','三國時期的戰爭','唐代的詩歌'],a:0,why:'書中記載戰國時期各國的政治大事及君臣間的言論。'},
+ {q:'下列哪一個，也是《戰國策》裡著名的寓言故事？',opts:['鷸蚌相爭','守株待兔','愚公移山','精衛填海'],a:0,why:'書中收錄許多著名的寓言故事，例如：狐假虎威、鷸蚌相爭和畫蛇添足等。'}
+];
+const QBG2=[
+ {q:'楚國的大將是誰？',opts:['昭奚恤','江乙','劉向','楚宣王'],a:0,why:'楚國大將昭奚恤聲名顯赫。'},
+ {q:'楚宣王聽說北方各國對昭奚恤怎麼樣？',opts:['畏懼不已','毫不在意','十分輕視','爭相結交'],a:0,why:'楚宣王聽說北方各國對他畏懼不已，便詢問緣由。'},
+ {q:'大臣江乙用什麼故事來回答楚宣王？',opts:['狐假虎威','鷸蚌相爭','畫蛇添足','守株待兔'],a:0,why:'江乙以狐假虎威的故事回答楚宣王。'},
+ {q:'「狐假虎威」這段文字，記述的是什麼？',opts:['楚宣王與群臣的一段對話','兩國之間的戰爭','老虎與狐狸的比賽','一位大臣的一生'],a:0,why:'狐假虎威記述楚宣王與群臣的一段對話。'},
+ {q:'江乙想說明，北方各國真正害怕的是什麼？',opts:['楚宣王強大的武力','昭奚恤的聲名','老虎的爪牙','狐狸的智慧'],a:0,why:'北方各國真正害怕的不是昭奚恤，而是楚宣王強大的武力。'}
+];
+const QGATE=[
+ {q:'這個故事是誰對楚宣王說的？',opts:['江乙','昭奚恤','劉向','老虎'],a:0,why:'大臣江乙以狐假虎威的故事回答楚宣王。'},
+ {q:'楚國大將誰，聲名顯赫、北方各國都畏懼他？',opts:['昭奚恤','江乙','劉向','楚宣王'],a:0,why:'楚國大將昭奚恤聲名顯赫。'},
+ {q:'「狐假虎威」是哪一種文學體裁？',opts:['寓言','詩歌','小說','散文詩'],a:0,why:'寓言是一種文學體裁，以淺顯的事件內容表達對人、事、物的觀察與體悟。'},
+ {q:'〈狐假虎威〉節錄自哪一本書？',opts:['戰國策','史記','論語','左傳'],a:0,why:'本文節錄自《戰國策》。'}
+];
+const QGATE2=[
+ {q:'「狐假虎威」後來演變為成語，比喻什麼？',opts:['憑藉別人的權勢欺壓、恐嚇他人','兩人爭鬥讓別人得利','做了多餘的事','做事小心謹慎'],a:0,why:'後來比喻憑藉別人的權勢欺壓、恐嚇他人。'},
+ {q:'這則寓言也提醒我們什麼？',opts:['不可只看表面，要深入觀察、思考','權勢越大越值得相信','遇到危險就要逃跑','要多交朋友'],a:0,why:'對各種事物不可只看表面，要深入觀察、思考，才不會被表象蒙蔽。'}
+];
+const QZ2=[
+ {q:'「狐假虎威」出自《戰國策》。',t:1,why:'沒錯，本文節錄自戰國策。'},
+ {q:'「假」在課文中的意思是「借」。',t:1,why:'注釋①：假，借。'},
+ {q:'「狐假虎威」比喻憑藉別人的權勢欺壓他人。',t:1,why:'後來演變為成語，用來諷刺藉著有權者的威勢欺壓他人的人。'},
+ {q:'「遂與之行」的「遂」是「就、於是」的意思。',t:1,why:'注釋⑫：遂，就、於是。'},
+ {q:'「虎求百獸而食之」的「之」是代名詞，指百獸。',t:1,why:'第一個「之」是代名詞，指百獸。'},
+ {q:'狐狸真的是天帝派來管理百獸的。',t:0,why:'這是狐狸聲稱的，並不是事實，他是為了避免被老虎吃掉。'},
+ {q:'百獸逃跑是因為害怕狐狸。',t:0,why:'百獸害怕的是老虎，老虎卻誤以為牠們怕狐狸。'},
+ {q:'「獸見之皆走」的「之」指的是狐狸。',t:0,why:'這個「之」是代名詞，指老虎。'},
+ {q:'老虎一開始就知道百獸害怕的是自己。',t:0,why:'課文說「虎不知獸畏己而走也」。'},
+ {q:'「觀百獸之見我」的「之」是代名詞，指百獸。',t:0,why:'這個「之」是助詞，連接「百獸」和「見我」，沒有特別的意思。'}
+];
+const QZ3=[
+ {q:'狐狸提議怎麼讓老虎相信自己？',opts:['自己走在前面，讓老虎看百獸的反應','把天帝請來作證','送老虎一隻山羊','逃進森林深處'],a:0,why:'狐狸說：我走在前面，你跟在後面，看百獸見到我，有誰敢不逃跑。'},
+ {q:'「子以我為不信」的「子」是什麼意思？',opts:['你','兒子','老師','您的兒子'],a:0,why:'注釋④：子是第二人稱代名詞，同「你」。'},
+ {q:'老虎為什麼誤以為百獸怕狐狸？',opts:['沒有深入觀察，被表象蒙蔽','百獸真的怕狐狸','天帝出現了','狐狸變成了老虎'],a:0,why:'老虎沒有看出百獸是怕自己，這提醒我們要深入觀察、思考，不被表象蒙蔽。'}
+];
+const NPCS=[
+ {name:'典籍官',look:{gender:'m',beard:'long',hat:'guan',outfit:'robe',color:'#7a4a8a',acc:'scroll'},
+  open:['你來得正好！我是楚宮裡看管竹簡的典籍官。','楚宣王想知道這個故事的出處，我先考考你有沒有讀過《戰國策》的背景說明。'],
+  close:['答得好！這卷竹簡送給你。','宮門開了，到宮門外找史官吧。']},
+ {name:'史官',look:{gender:'m',beard:'short',hat:'guan',outfit:'robe',color:'#8a5a2a',acc:'scroll'},
+  open:['楚宣王聽說北方各國都害怕一個人，覺得很奇怪。','你知道是怎麼一回事嗎？先回答我幾個背景問題。'],
+  close:['沒錯！這就是江乙回答楚宣王之前的背景。','前面的橋通往百獸村，橋頭的巨獸使者會問你過橋的問題。']},
+ {name:'山羊村長',animal:'goat',
+  open:['歡迎來到百獸村！','這裡的故事要用文言文來讀。請把這些古文字詞分一分：它指的是老虎、百獸，還是狐狸？'],
+  close:['分得好！你得到了一件寶物。']},
+ {name:'狐狸',animal:'fox',
+  open:['嘿嘿，你也來啦？','我讓百獸從洞口依序探出頭，你記住牠們出現的順序，再回答我幾個問題。'],
+  close:['你觀察得真仔細，不會被表象蒙蔽。','這張百獸圖給你。']},
+ {name:'小白兔',animal:'rabbit',
+  open:['我偷偷背過那段古文。','有幾個字我忘了，請幫我選回來。'],
+  close:['背得真熟！謝謝你。']},
+ {name:'驢子',animal:'donkey',
+  open:['課文的注釋把我弄糊塗了。','請把字和它的意思配成一對。'],
+  close:['原來是這樣！謝謝你。']},
+ {name:'小鹿',animal:'deer',
+  open:['快！老虎快來了！','請在時間內回答古文字義的問題。'],
+  close:['又快又準！你跑得比我還快。']},
+ {name:'楚宣王',look:{gender:'m',beard:'short',hat:'guan',outfit:'deep',color:'#b8862b',acc:'none'},
+  open:['你終於回來了！快向寡人匯報百獸村的事。','先把故事發生的先後順序說清楚，再把句子排通順。'],
+  close:['說得條理分明。','還有兩位學者想考考你。']},
+ {name:'蒐字老人',look:{gender:'m',beard:'long',hat:'dou',outfit:'robe',color:'#8a5a2a',acc:'scroll'},
+  open:['我專門蒐集成語和詞語，這一課裡藏了好多寶貝。','請排出成語、選詞填空，再把句子裡的錯字找出來。'],
+  close:['好眼力！這枚字詞章送給你。','最後一位思辨長者在書院等你。']},
+ {name:'思辨長者',look:{gender:'m',beard:'long',hat:'guan',outfit:'deep',color:'#2a2a2a',acc:'jade'},
+  open:['讀書不能只看表面。','請先分類「之」字，再回答幾個問題，想一想作者想提醒我們什麼。'],
+  close:['能深入思考，真了不起！這枚思辨章送給你。']}
+];
+const STORY=[
+ {tag:'背景',t:'楚宣王聽說北方各國都害怕大將昭奚恤，覺得很奇怪，就問大臣們是什麼緣故。',st:0},
+ {tag:'背景',t:'大臣江乙說：「讓我說一個故事。」這個故事記載在《戰國策》裡，就是「狐假虎威」。',st:1},
+ {tag:'起因',t:'老虎獵捕各種野獸作為食物，這一天，牠抓到了一隻狐狸。',st:2},
+ {tag:'起因',t:'狐狸說：「你才不敢吃我呢！天帝命令我管理百獸，你吃了我，就是違背天帝的命令。」',st:3},
+ {tag:'經過',t:'狐狸又說：「你如果不相信，我走在前面，你跟在我後面，看看百獸見到我，有誰敢不逃跑？」',st:4},
+ {tag:'經過',t:'老虎覺得狐狸的話有道理，於是跟著狐狸走。狐狸昂首走在前，老虎緊緊跟在後面。',st:5},
+ {tag:'結果',t:'百獸看到老虎，全都嚇得落荒而逃。',st:6},
+ {tag:'結果',t:'老虎不知道百獸是因為害怕自己才逃跑，還以為他們是怕狐狸呢！',st:7}
+];
+const SUMPAGE='total';
+
+/* ================= 存檔 ================= */
+const KEY='fox-tiger-v3';
+const DEF_LOOK={gender:'m',beard:'short',hat:'guan',outfit:'robe',color:'#2e6f7e',acc:'scroll'};
+let save={look:Object.assign({},DEF_LOOK),name:'江乙',res:[]};
+function loadSave(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&typeof s==='object'){save=Object.assign(save,s);save.look=Object.assign({},DEF_LOOK,s.look||{});}}catch(e){}
+  if(!Array.isArray(save.res))save.res=[];while(save.res.length<PLAN.length)save.res.push(null);}
+function store(){try{localStorage.setItem(KEY,JSON.stringify(save));}catch(e){}}
+function resetSave(){save={look:Object.assign({},DEF_LOOK),name:'江乙',res:Array(PLAN.length).fill(null)};try{localStorage.removeItem(KEY);}catch(e){}}
+loadSave();
+const doneN=()=>save.res.slice(0,BUILT).filter(Boolean).length;
+const totalScore=()=>save.res.reduce((a,r)=>a+(r?r.score:0),0);
+
+/* ================= 音效與音樂（Web Audio 合成） ================= */
+const A={ctx:null,music:true,mute:false,duck:1,step:0,next:0,timer:null,tense:false,speed:false,ts:0};
+const SC=[261.63,293.66,329.63,392,440,523.25,587.33,659.25,784,880];
+function ac(){if(!A.ctx){try{const C=window.AudioContext||window.webkitAudioContext;A.ctx=new C();A.master=A.ctx.createGain();A.master.connect(A.ctx.destination);A.mus=A.ctx.createGain();A.mus.connect(A.master);startMusic();}catch(e){return null;}}
+  if(A.ctx.state==='suspended')A.ctx.resume();vol();return A.ctx;}
+function vol(){if(!A.ctx)return;A.master.gain.value=A.mute?0:0.8;A.mus.gain.value=(A.music?0.5:0)*A.duck;}
+function note(f,t,d,type,v,dest,vib){const c=A.ctx,o=c.createOscillator(),g=c.createGain();o.type=type;o.frequency.value=f;
+  g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(v,t+0.015);g.gain.exponentialRampToValueAtTime(0.0001,t+d);
+  if(vib){const l=c.createOscillator(),lg=c.createGain();l.frequency.value=5;lg.gain.value=f*0.012;l.connect(lg);lg.connect(o.frequency);l.start(t);l.stop(t+d+0.05);}
+  o.connect(g);g.connect(dest||A.master);o.start(t);o.stop(t+d+0.05);}
+function drum(t){const c=A.ctx,o=c.createOscillator(),g=c.createGain();o.frequency.setValueAtTime(120,t);o.frequency.exponentialRampToValueAtTime(40,t+0.4);
+  g.gain.setValueAtTime(0.7,t);g.gain.exponentialRampToValueAtTime(0.0001,t+0.5);o.connect(g);g.connect(A.mus);o.start(t);o.stop(t+0.55);}
+function startMusic(){const roots=[0,2,3,1];A.next=A.ctx.currentTime+0.2;
+  const TM=[220,233.08,220,277.18,220,246.94,311.13,233.08];
+  A.timer=setInterval(()=>{if(!A.ctx)return;while(A.next<A.ctx.currentTime+1){const t=A.next;
+    if(A.tense){const beat=A.speed?0.2:0.3,s=A.ts++,b=s%8;
+      note(55,t,beat*0.95,'sawtooth',0.2,A.mus);
+      if(b%4===0)drum(t);if(b===6)drum(t+beat*0.5);
+      note(TM[b],t,beat*0.8,'square',0.06,A.mus);
+      if(b%2===1)note(TM[b]*2,t,beat*0.5,'triangle',0.05,A.mus);
+      if(s%16===15)note(880,t,beat*3,'sawtooth',0.035,A.mus,true);
+      A.next+=beat;}
+    else{const s=A.step,b=s%4,bar=(s/4)|0,r=roots[bar%4];
+      note(SC[(r+[0,2,4,2][b])%10],t,1.2,'triangle',0.16,A.mus);
+      if(b===0)note(SC[r]/2,t,2.0,'sine',0.22,A.mus);
+      if(b%2===0&&((s*7+bar*3)%5)<3)note(SC[5+((s*3+bar)%5)],t+0.02,0.9,'sine',0.1,A.mus,true);
+      if(bar%4===3&&b===3)drum(t);
+      A.step++;A.next+=0.55;}}},250);}
+function musicMode(){A.tense=(!$('#modal').hidden&&!menuOpen)||(mode==='game'&&!!save.form&&!save.broken);}
+function sfx(k){if(!ac())return;const t=A.ctx.currentTime;
+  if(k==='click')note(SC[5],t,0.12,'triangle',0.2);
+  else if(k==='ok'){note(SC[4],t,0.18,'triangle',0.25);note(SC[7],t+0.1,0.3,'triangle',0.25);}
+  else if(k==='bad'){note(150,t,0.25,'sawtooth',0.12);}
+  else if(k==='token'){[0,2,4,7,9].forEach((n,i)=>note(SC[n],t+i*0.1,0.5,'triangle',0.25));}
+  else if(k==='blip')note(SC[3+(Math.random()*3|0)],t,0.05,'square',0.04);
+  else if(typeof k==='number')note(SC[k],t,0.45,'triangle',0.3);}
+const blip=()=>sfx('blip');
+function setDuck(v){A.duck=v;vol();}
+function syncAudioBtns(){['#cvMus','#btnMus'].forEach(s=>$(s).setAttribute('aria-pressed',A.music));['#cvMute','#btnMute'].forEach(s=>$(s).setAttribute('aria-pressed',!A.mute));}
+['#cvMus','#btnMus'].forEach(s=>$(s).addEventListener('click',()=>{ac();A.music=!A.music;vol();syncAudioBtns();}));
+['#cvMute','#btnMute'].forEach(s=>$(s).addEventListener('click',()=>{ac();A.mute=!A.mute;vol();syncAudioBtns();}));
+document.addEventListener('pointerdown',()=>ac(),{once:true});
+document.addEventListener('keydown',()=>ac(),{once:true});
+
+/* ================= 3D：材質、造型 ================= */
+const M=(c,o)=>new T.MeshLambertMaterial(Object.assign({color:c,flatShading:true},o||{}));
+function label(text,o){o=o||{};const c=document.createElement('canvas');c.width=320;c.height=110;const x=c.getContext('2d');
+  x.font='900 52px "Noto Serif TC",serif';const w=Math.min(300,x.measureText(text).width+40);x.fillStyle=o.bg||'rgba(42,29,20,.82)';
+  const px=(320-w)/2;x.beginPath();x.rect(px,20,w,70);x.fill();x.strokeStyle=o.edge||'#e8b94a';x.lineWidth=4;x.strokeRect(px+4,24,w-8,62);
+  x.fillStyle=o.fg||'#fff4d6';x.textAlign='center';x.textBaseline='middle';x.fillText(text,160,57);
+  const s=new T.Sprite(new T.SpriteMaterial({map:new T.CanvasTexture(c),transparent:true,depthTest:false}));const k=o.s||1;s.scale.set(4*k,1.375*k,1);s.renderOrder=10;return s;}
+function human(o){o=Object.assign({},DEF_LOOK,o||{});const g=new T.Group(),skin=0xf1c9a1,dark=0x2a1d14;
+  const rh=o.outfit==='short'?0.85:1.3,col=new T.Color(o.color);
+  const body=new T.Mesh(new T.CylinderGeometry(0.27,o.outfit==='short'?0.34:0.45,rh,7),M(col));body.position.y=(o.outfit==='short'?0.5:0)+rh/2;g.add(body);
+  const base=o.outfit==='short'?0.5:0;
+  if(o.outfit==='short'){for(const s of[-1,1]){const l=new T.Mesh(new T.CylinderGeometry(0.1,0.09,0.5,5),M(0x4a3a2a));l.position.set(s*0.14,0.25,0);g.add(l);}}
+  if(o.outfit==='deep'){const sash=new T.Mesh(new T.CylinderGeometry(0.4,0.4,0.18,7),M(0xfff0d0));sash.position.y=0.65;g.add(sash);}
+  else{const sash=new T.Mesh(new T.CylinderGeometry(0.31,0.31,0.1,7),M(0x2a1d14));sash.position.y=base+rh*0.55;g.add(sash);}
+  const top=base+rh;
+  const head=new T.Mesh(new T.IcosahedronGeometry(0.28,0),M(skin));head.position.y=top+0.3;g.add(head);
+  for(const s of[-1,1]){const e=new T.Mesh(new T.BoxGeometry(0.05,0.07,0.04),M(dark));e.position.set(s*0.1,top+0.33,0.25);g.add(e);
+    const arm=new T.Mesh(new T.CylinderGeometry(0.07,0.06,0.6,5),M(col));arm.position.set(s*0.4,top-0.3,0.05);arm.rotation.z=s*0.2;g.add(arm);}
+  if(o.hat!=='dou'){const hair=new T.Mesh(new T.SphereGeometry(0.31,7,4,0,Math.PI*2,0,Math.PI/2),M(dark));hair.position.y=top+0.34;g.add(hair);}
+  if(o.gender==='f'){const back=new T.Mesh(new T.BoxGeometry(0.5,0.7,0.14),M(dark));back.position.set(0,top+0.05,-0.2);g.add(back);}
+  if(o.hat==='guan'){const b=new T.Mesh(new T.BoxGeometry(0.2,0.2,0.2),M(dark));b.position.y=top+0.7;g.add(b);const p=new T.Mesh(new T.BoxGeometry(0.62,0.05,0.3),M(0xe8b94a));p.position.y=top+0.82;g.add(p);}
+  if(o.hat==='dou'){const c=new T.Mesh(new T.ConeGeometry(0.6,0.32,8),M(0xd9b45a));c.position.y=top+0.6;g.add(c);}
+  if(o.hat==='bun'){for(const s of[-1,1]){const b=new T.Mesh(new T.SphereGeometry(0.13,6,4),M(dark));b.position.set(s*0.2,top+0.62,0);g.add(b);}}
+  if(o.beard!=='none'&&o.gender!=='f'){const L=o.beard==='long'?0.62:0.26;const b=new T.Mesh(new T.ConeGeometry(0.15,L,5),M(o.beard==='long'?0xe8e4da:dark));b.rotation.x=Math.PI;b.position.set(0,top+0.2-L/2+0.02,0.18);g.add(b);}
+  if(o.acc==='scroll'){const s=new T.Mesh(new T.CylinderGeometry(0.07,0.07,0.5,6),M(0xd9b45a));s.rotation.z=Math.PI/2;s.position.set(0.42,top-0.55,0.3);g.add(s);}
+  if(o.acc==='fan'){const f=new T.Mesh(new T.CylinderGeometry(0.32,0.32,0.04,8,1,false,0,Math.PI),M(0xfff4d6));f.rotation.set(Math.PI/2,0,0);f.position.set(0.5,top-0.35,0.35);g.add(f);}
+  if(o.acc==='jade'){const j=new T.Mesh(new T.OctahedronGeometry(0.1),M(0x4fb28a));j.position.set(0.18,base+rh*0.4,0.34);g.add(j);}
+  return g;}
+function quad(o){const g=new T.Group(),lh=o.leg||0.35,bl=o.l||1.2,bh=o.h||0.5,bw=o.w||0.5;
+  const body=new T.Mesh(new T.BoxGeometry(bw,bh,bl),M(o.c));body.position.y=lh+bh/2;g.add(body);
+  [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(p=>{const l=new T.Mesh(new T.CylinderGeometry(0.07,0.06,lh,5),M(o.lc||o.c));l.position.set(p[0]*bw*0.33,lh/2,p[1]*bl*0.36);g.add(l);});
+  const hd=new T.Mesh(new T.BoxGeometry(bw*0.8,bh*0.8,bw*0.8),M(o.hc||o.c));hd.position.set(0,lh+bh*0.95,bl/2+bw*0.2);g.add(hd);
+  const sn=new T.Mesh(new T.BoxGeometry(bw*0.4,bh*0.3,bw*0.45),M(o.sc||o.hc||o.c));sn.position.set(0,lh+bh*0.85,bl/2+bw*0.7);g.add(sn);
+  const ear=o.ear||0.25;for(const s of[-1,1]){const e=new T.Mesh(new T.ConeGeometry(0.08,ear,4),M(o.ec||o.c));e.position.set(s*bw*0.28,lh+bh*1.35+ear/2-0.05,bl/2+bw*0.15);g.add(e);}
+  const tl=o.tail||0.6,t=new T.Mesh(new T.ConeGeometry(0.1,tl,5),M(o.tc||o.c));t.rotation.x=-Math.PI/2+0.4;t.position.set(0,lh+bh*0.85,-bl/2-tl*0.4);g.add(t);
+  if(o.tip){const p=new T.Mesh(new T.SphereGeometry(0.1,5,4),M(0xffffff));p.position.set(0,lh+bh*0.85+0.1,-bl/2-tl*0.85);g.add(p);}
+  if(o.stripes){for(let i=0;i<5;i++){const s=new T.Mesh(new T.BoxGeometry(bw+0.04,bh*0.55,0.1),M(0x2a1d14));s.position.set(0,lh+bh*0.6,-bl*0.35+i*bl*0.17);g.add(s);}}
+  if(o.horn){for(const s of[-1,1]){const h=new T.Mesh(new T.ConeGeometry(0.05,o.horn,4),M(0x6b4a2a));h.position.set(s*0.12,lh+bh*1.5,bl/2+bw*0.1);h.rotation.z=-s*0.4;g.add(h);}}
+  return g;}
+const mkTiger=()=>quad({c:0xe08a2e,sc:0xf4e6c8,l:2.0,h:0.9,w:0.9,leg:0.55,ear:0.22,tail:1.2,stripes:true});
+const mkFox=()=>quad({c:0xd9682a,sc:0xfff0dc,lc:0x5a3a22,l:0.9,h:0.42,w:0.36,leg:0.3,ear:0.24,tail:0.85,tip:true});
+const mkAnimal=k=>({
+  rabbit:()=>quad({c:0xf2eee6,l:0.55,h:0.34,w:0.3,leg:0.12,ear:0.5,tail:0.15}),
+  goat:()=>quad({c:0xb89870,l:1.0,h:0.5,w:0.4,leg:0.4,ear:0.16,tail:0.2,horn:0.3}),
+  donkey:()=>quad({c:0x8e8e96,sc:0xe6e0d4,l:1.2,h:0.55,w:0.45,leg:0.5,ear:0.42,tail:0.5}),
+  deer:()=>quad({c:0xb9803f,sc:0xf0dcb4,l:1.1,h:0.5,w:0.4,leg:0.6,ear:0.2,tail:0.2,horn:0.6})
+}[k])();
+
+/* ================= 場景 ================= */
+const canvas=$('#world');
+const renderer=new T.WebGLRenderer({canvas,antialias:true,preserveDrawingBuffer:true});
+const scene=new T.Scene();scene.background=new T.Color(0xf3dfaa);scene.fog=new T.Fog(0xf3dfaa,55,130);
+const camera=new T.PerspectiveCamera(50,1,0.1,300);
+scene.add(new T.HemisphereLight(0xfff1c8,0x9a8a5a,0.85));
+const sun=new T.DirectionalLight(0xfff4d8,0.75);sun.position.set(-30,50,20);scene.add(sun);
+function resize(){renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();}
+resize();addEventListener('resize',resize);
+
+const N=80,blocked=new Uint8Array(N*N);
+const ci=x=>Math.floor(x+40);
+function blockRect(x0,z0,x1,z1,v){for(let i=ci(x0);i<=ci(x1-0.001);i++)for(let j=ci(z0);j<=ci(z1-0.001);j++)if(i>=0&&j>=0&&i<N&&j<N)blocked[j*N+i]=v===0?0:1;}
+// 地面
+const ground=new T.Mesh(new T.PlaneGeometry(100,100,10,10).rotateX(-Math.PI/2),M(0xd6c47c));scene.add(ground);
+// 邊界與遠山
+blockRect(-40,-40,40,-37,1);blockRect(-40,37,40,40,1);blockRect(-40,-40,-37,40,1);blockRect(37,-40,40,40,1);
+for(let i=0;i<34;i++){const a=i/34*Math.PI*2,r=52+rnd()*8,h=10+rnd()*14;const m=new T.Mesh(new T.ConeGeometry(7+rnd()*5,h,5),M(i%3?0xb9b09a:0xdcd6c6));m.position.set(Math.cos(a)*r,h/2-1,Math.sin(a)*r);m.rotation.y=rnd()*3;scene.add(m);}
+// 河
+const river=new T.Mesh(new T.PlaneGeometry(4,80).rotateX(-Math.PI/2),M(0x7fa6b0,{transparent:true,opacity:0.85}));river.position.set(8,0.03,0);scene.add(river);
+blockRect(6,-37,10,37,1);blockRect(6,-10,10,-6,0);
+const lbl=(t,x,y,z,o)=>{const s=label(t,o);s.position.set(x,y,z);scene.add(s);return s;};
+lbl('清溪',8,1.6,10,{s:0.8});
+function mkKaiju(){const g=new T.Group(),sh=M(0x4f8a7a),dk=M(0x2f5a52),lt=M(0xe8d9a0),rd=M(0xc4352b);
+  const body=new T.Mesh(new T.SphereGeometry(1,7,5),sh);body.scale.set(1.25,0.9,1.7);body.position.y=1.1;g.add(body);
+  for(let i=0;i<5;i++){const pl=new T.Mesh(new T.ConeGeometry(0.34,0.6,4),dk);pl.position.set(0,1.95-Math.abs(i-2)*0.12,-0.9+i*0.45);g.add(pl);}
+  const belly=new T.Mesh(new T.SphereGeometry(0.9,6,4),lt);belly.scale.set(1.1,0.6,1.5);belly.position.y=0.65;g.add(belly);
+  const head=new T.Mesh(new T.BoxGeometry(0.9,0.8,1.0),sh);head.position.set(0,1.45,1.95);g.add(head);
+  const jaw=new T.Mesh(new T.BoxGeometry(0.8,0.25,0.8),lt);jaw.position.set(0,1.05,2.1);g.add(jaw);
+  for(const sd of[-1,1]){const h=new T.Mesh(new T.ConeGeometry(0.12,0.55,5),rd);h.position.set(sd*0.35,2.0,1.85);g.add(h);
+    const e=new T.Mesh(new T.BoxGeometry(0.14,0.14,0.05),M(0x111111));e.position.set(sd*0.28,1.6,2.46);g.add(e);
+    for(const z of[-0.9,0.9]){const l=new T.Mesh(new T.CylinderGeometry(0.28,0.3,0.7,6),dk);l.position.set(sd*0.9,0.35,z);g.add(l);}}
+  const tail=new T.Mesh(new T.ConeGeometry(0.5,2.0,6),sh);tail.rotation.x=-Math.PI/2;tail.position.set(0,0.9,-2.6);g.add(tail);
+  const pole=new T.Mesh(new T.CylinderGeometry(0.05,0.05,2.4,5),M(0x6b4a2a));pole.position.set(0.5,2.6,-0.4);g.add(pole);
+  const flag=new T.Mesh(new T.BoxGeometry(0.9,0.55,0.05),rd);flag.position.set(0.98,3.4,-0.4);g.add(flag);
+  g.scale.setScalar(0.9);return g;}
+const kaiju=mkKaiju();scene.add(kaiju);
+const kLabel=label('巨獸使者',{s:0.9});kLabel.position.set(0,4.6,0);kaiju.add(kLabel);
+lbl('楚國',2,3.4,-4.4,{s:0.9,bg:'rgba(196,53,43,.95)'});lbl('百獸村',14.5,3.4,-4.4,{s:0.9,bg:'rgba(61,107,58,.95)'});
+for(const z of[-10.8,-5.2]){const po=new T.Mesh(new T.CylinderGeometry(0.2,0.25,4,6),M(0x8a3a22));po.position.set(12.5,2,z);scene.add(po);}
+const arch=new T.Mesh(new T.BoxGeometry(0.4,0.4,6.4),M(0x8a3a22));arch.position.set(12.5,4.1,-8);scene.add(arch);
+function applyBridge(){const open=!!(save.gateW||(save.gateE&&!save.form));blockRect(7,-10,9,-6,open?0:1);
+  kaiju.position.set(open?8.4:8,0,open?-6.2:-8);kaiju.rotation.y=save.form?Math.PI/2:-Math.PI/2;}
+// 竹簡路
+const slatA=M(0xe6c765),slatB=M(0xd2ae4c);
+for(let x=-27;x<=23;x+=0.62){const s=new T.Mesh(new T.BoxGeometry(0.5,0.12,4),(Math.round(x/0.62)%2)?slatA:slatB);s.position.set(x,0.07,-8);scene.add(s);}
+for(let z=-14;z<=-10;z+=0.62){const s=new T.Mesh(new T.BoxGeometry(3,0.12,0.5),(Math.round(z/0.62)%2)?slatA:slatB);s.position.set(-24,0.07,z);scene.add(s);}
+for(const z of[-10.1,-5.9]){const r=new T.Mesh(new T.BoxGeometry(6,0.5,0.15),M(0xb08a3a));r.position.set(8,0.45,z);scene.add(r);}
+lbl('竹簡路',-6,1.6,-5,{s:0.9});
+// 楚宮
+const cx=-24,cz=-20,wallM=M(0xdcd6c6),redM=M(0xc4352b);
+function wall(x,z,w,d,h){const m=new T.Mesh(new T.BoxGeometry(w,h||3,d),wallM);m.position.set(x,(h||3)/2,z);scene.add(m);}
+wall(cx,cz-6,14,0.8);wall(cx-7,cz,0.8,12);wall(cx+7,cz,0.8,12);wall(cx-4.25,cz+6,5.5,0.8);wall(cx+4.25,cz+6,5.5,0.8);
+const lintel=new T.Mesh(new T.BoxGeometry(3.4,0.8,0.9),redM);lintel.position.set(cx,3.4,cz+6);scene.add(lintel);
+for(const sx of[-1,1])for(const sz of[-1,1]){const t=new T.Mesh(new T.BoxGeometry(2.2,4.6,2.2),wallM);t.position.set(cx+sx*7,2.3,cz+sz*6);scene.add(t);
+  const r=new T.Mesh(new T.ConeGeometry(2.0,1.7,4),redM);r.rotation.y=Math.PI/4;r.position.set(cx+sx*7,5.4,cz+sz*6);scene.add(r);}
+const hall=new T.Mesh(new T.BoxGeometry(7,3.2,5),M(0xe6d9b0));hall.position.set(cx,1.6,cz-1);scene.add(hall);
+const hroof=new T.Mesh(new T.ConeGeometry(5.6,2.2,4),redM);hroof.rotation.y=Math.PI/4;hroof.position.set(cx,4.3,cz-1);scene.add(hroof);
+blockRect(cx-7.4,cz-6.4,cx+7.4,cz-5.6,1);blockRect(cx-7.4,cz-6.4,cx-6.6,cz+6.4,1);blockRect(cx+6.6,cz-6.4,cx+7.4,cz+6.4,1);
+blockRect(cx-7.4,cz+5.6,cx-1.5,cz+6.4,1);blockRect(cx+1.5,cz+5.6,cx+7.4,cz+6.4,1);blockRect(cx-3.5,cz-3.5,cx+3.5,cz+1.5,1);
+for(const sx of[-1,1])for(const sz of[-1,1])blockRect(cx+sx*7-1.2,cz+sz*6-1.2,cx+sx*7+1.2,cz+sz*6+1.2,1);
+lbl('楚宮',cx,5.2,cz+6.6,{bg:'rgba(196,53,43,.95)',s:1.3});
+// 城門（完成第 1 關後打開）
+const doors=[];for(const s of[-1,1]){const piv=new T.Group();piv.position.set(cx+s*1.5,0,cz+6);const d=new T.Mesh(new T.BoxGeometry(1.5,2.9,0.25),M(0x8a3a22));d.position.set(-s*0.75,1.45,0);piv.add(d);scene.add(piv);doors.push({piv,s});}
+// 燈籠（完成第 2 關後點亮）
+const lanterns=[];for(const s of[-1,1]){const l=new T.Mesh(new T.SphereGeometry(0.35,6,5),M(0xc4352b,{emissive:0x000000}));l.position.set(cx+s*2.4,2.6,cz+6.7);scene.add(l);lanterns.push(l);}
+// 書院（第 10 關預留）
+const sy=new T.Mesh(new T.BoxGeometry(6,2.6,4),M(0xe6d9b0));sy.position.set(-24,1.3,14);scene.add(sy);
+const syr=new T.Mesh(new T.ConeGeometry(4.6,1.8,4),M(0x6b4a2a));syr.rotation.y=Math.PI/4;syr.position.set(-24,3.5,14);scene.add(syr);
+blockRect(-27.5,11.5,-20.5,16.5,1);lbl('書院（尚未開放）',-24,5.4,14,{s:1.1});
+// 森林
+const LVPOS=[[-20,-16.5],[-18,-11],[16,-13],[22,-3],[14,4],[24,12],[16,17],[-25.5,-17.7],[-14,-3],[-18,14]];
+const keep=[[0,-8,40,3.2],[30,-9,0,5],[20,6,0,3],[8,-8,0,4]];LVPOS.forEach(p=>keep.push([p[0],p[1],0,3]));
+function keepOut(x,z){if(Math.abs(z+8)<3.4&&x>-28&&x<25)return true;if(Math.abs(x+24)<2.6&&z>-15&&z<-7)return true;
+  for(let k=1;k<keep.length;k++){const p=keep[k];if(Math.hypot(x-p[0],z-p[1])<p[3])return true;}return false;}
+let placed=0;while(placed<95){const x=-35+rnd()*70,z=-35+rnd()*70;
+  if(keepOut(x,z)||Math.abs(x-8)<3||(x<-16&&z<-12&&z>-28)||(x>-28&&x<-20&&z>10&&z<18))continue;
+  if(x<10&&rnd()<0.6)continue;
+  const h=2+rnd()*2.4,tr=new T.Mesh(new T.CylinderGeometry(0.2,0.28,1.2,5),M(0x6b4a2a));tr.position.set(x,0.6,z);scene.add(tr);
+  const cn=new T.Mesh(new T.ConeGeometry(1.1+rnd()*0.5,h,6),M(rnd()<0.3?0xb59a2e:0x6c8a3c));cn.position.set(x,1.2+h/2,z);scene.add(cn);
+  blockRect(x-0.4,z-0.4,x+0.4,z+0.4,1);placed++;}
+lbl('森林',27,5,3,{s:1.1});
+// 虎山與狐狸洞
+for(const p of[[30,-12,2.2],[32,-9,3],[29,-6,1.8],[31,-4,2.4]]){const r=new T.Mesh(new T.IcosahedronGeometry(p[2],0),M(0xb9b09a));r.position.set(p[0],p[2]*0.6,p[1]);r.rotation.set(rnd(),rnd(),rnd());scene.add(r);blockRect(p[0]-p[2]*0.8,p[1]-p[2]*0.8,p[0]+p[2]*0.8,p[1]+p[2]*0.8,1);}
+lbl('虎山',31,5.6,-8,{s:1});
+const den=new T.Mesh(new T.SphereGeometry(2,7,4,0,Math.PI*2,0,Math.PI/2),M(0x9a7a44));den.position.set(20,0,8);scene.add(den);blockRect(18.5,6.5,21.5,9.5,1);
+const denHole=new T.Mesh(new T.CircleGeometry(0.7,8),M(0x2a1d14));denHole.position.set(20,0.9,6.05);scene.add(denHole);lbl('狐狸洞',20,3.6,8,{s:0.9});
+
+/* 演員：楚王、昭奚恤、舞臺老虎／狐狸、百獸 */
+const king=human({gender:'m',beard:'short',hat:'guan',outfit:'deep',color:'#b8862b',acc:'none'});king.visible=false;scene.add(king);
+const zhao=human({gender:'m',beard:'none',hat:'guan',outfit:'short',color:'#c4352b',acc:'jade'});zhao.position.set(-22.2,0,-17.7);zhao.rotation.y=Math.PI;scene.add(zhao);blockRect(-22.7,-18.2,-21.7,-17.2,1);
+const tiger=mkTiger(),foxS=mkFox();scene.add(tiger,foxS);
+const beasts=[['rabbit',-1],['goat',1],['donkey',2],['deer',3]].map(a=>{const m=mkAnimal(a[0]);scene.add(m);return {m,k:a[0]};});
+function mkPlayer(){if(save.form==='tiger'){const t=mkTiger();t.scale.setScalar(0.8);return t;}if(save.form==='fox'){const f=mkFox();f.scale.setScalar(1.4);return f;}return human(save.look);}
+function spawn(){if(!save.res[0])return [-27,-15.5];if(save.form)return [14,-8];return [-24,-11];}
+let player=mkPlayer();scene.add(player);{const sp0=spawn();player.position.set(sp0[0],0,sp0[1]);}
+function placePlayer(){const q=spawn();player.position.set(q[0],0,q[1]);}
+function setLook(){const p=player.position.clone(),r=player.rotation.y;scene.remove(player);player=mkPlayer();player.position.copy(p);player.rotation.y=r;scene.add(player);}
+
+/* 關卡圓圈與 NPC */
+const lv=LVPOS.map((p,i)=>{const g=new T.Group();g.position.set(p[0],0,p[1]);
+  const ring=new T.Mesh(new T.RingGeometry(1.5,2.1,32).rotateX(-Math.PI/2),new T.MeshBasicMaterial({color:0xffd24a,transparent:true,opacity:0.95,side:T.DoubleSide}));ring.position.y=0.08;g.add(ring);
+  const beam=new T.Mesh(new T.CylinderGeometry(1.8,1.8,7,16,1,true),new T.MeshBasicMaterial({color:0xffd24a,transparent:true,opacity:0.16,side:T.DoubleSide,depthWrite:false}));beam.position.y=3.5;g.add(beam);
+  const sp=NPCS[i];let npc;if(sp.animal==='fox'){npc=mkFox();npc.scale.setScalar(1.7);}else if(sp.animal){npc=mkAnimal(sp.animal);npc.scale.setScalar(1.6);}else npc=human(sp.look);g.add(npc);
+  const tag=label((i+1)+'．'+PLAN[i].name,{s:0.95});tag.position.set(0,sp.animal?3.6:4.2,0);g.add(tag);
+  scene.add(g);blockRect(p[0]-0.5,p[1]-0.5,p[0]+0.5,p[1]+0.5,1);return {g,ring,beam,npc,tag};});
+
+/* 進度改變場景 */
+let doorTarget=0;
+function curLv(){for(let i=0;i<BUILT;i++)if(!save.res[i])return i;return -1;}
+function defaultActors(){
+  tiger.visible=save.form!=='tiger';tiger.position.set(29.5,1.7,-7.2);tiger.rotation.y=-Math.PI/2;tiger.scale.setScalar(1);foxS.visible=false;
+  const spots=[[25,-1],[28,2],[26,5],[32,1]];beasts.forEach((b,i)=>{b.m.position.set(spots[i][0],0,spots[i][1]);b.m.rotation.y=-1+i;b.m.visible=!!save.res[3];});}
+function applyProgress(){
+  lv[3].npc.visible=!save.broken;
+  blockRect(cx-1.5,cz+5.6,cx+1.5,cz+6.4,save.res[0]?0:1);
+  applyBridge();
+  doorTarget=save.res[0]?1:0;lanterns.forEach(l=>l.material.emissive.setHex(save.res[1]?0xffb040:0x000000));
+  const cur=curLv();
+  lv.forEach((o,i)=>{const done=!!save.res[i];o.ring.material.color.setHex(done?0x6fa86a:(i===cur?0xffd24a:0x9a9a8a));o.beam.visible=(i===cur);o.beam.material.opacity=0.16;o.ring.material.opacity=done?0.6:0.95;});
+  defaultActors();}
+
+/* A* 尋路 */
+function nearestFree(i,j){if(i>=0&&j>=0&&i<N&&j<N&&!blocked[j*N+i])return [i,j];
+  for(let r=1;r<12;r++)for(let dx=-r;dx<=r;dx++)for(let dz=-r;dz<=r;dz++){if(Math.max(Math.abs(dx),Math.abs(dz))!==r)continue;const a=i+dx,b=j+dz;if(a>=0&&b>=0&&a<N&&b<N&&!blocked[b*N+a])return [a,b];}
+  return null;}
+function astar(si,sj,ei,ej){const G=new Float32Array(N*N).fill(1e9),F=new Float32Array(N*N),P=new Int32Array(N*N).fill(-1),C=new Uint8Array(N*N);
+  const h=(i,j)=>{const dx=Math.abs(i-ei),dz=Math.abs(j-ej);return Math.max(dx,dz)+0.414*Math.min(dx,dz);};
+  const s=si+sj*N;G[s]=0;F[s]=h(si,sj);const open=[s];
+  while(open.length){let bi=0;for(let k=1;k<open.length;k++)if(F[open[k]]<F[open[bi]])bi=k;const cur=open.splice(bi,1)[0];if(C[cur])continue;C[cur]=1;
+    const x=cur%N,z=(cur/N)|0;
+    if(x===ei&&z===ej){const path=[];let c=cur;while(c!==-1){path.push([c%N+0.5-40,((c/N)|0)+0.5-40]);c=P[c];}return path.reverse();}
+    for(let dx=-1;dx<=1;dx++)for(let dz=-1;dz<=1;dz++){if(!dx&&!dz)continue;const a=x+dx,b=z+dz;if(a<0||b<0||a>=N||b>=N||blocked[a+b*N])continue;
+      if(dx&&dz&&(blocked[x+dx+z*N]||blocked[x+(z+dz)*N]))continue;const n=a+b*N,g=G[cur]+(dx&&dz?1.414:1);
+      if(g<G[n]){G[n]=g;P[n]=cur;F[n]=g+h(a,b);open.push(n);}}}
+  return null;}
+let wps=[],busy=false,mode='cover';
+function goTo(x,z){if(busy||mode!=='game')return false;
+  const s=nearestFree(ci(player.position.x),ci(player.position.z));const e=nearestFree(ci(x),ci(z));if(!s||!e)return false;
+  const p=astar(s[0],s[1],e[0],e[1]);if(!p)return false;p.shift();
+  if(ci(x)===e[0]&&ci(z)===e[1]&&p.length)p[p.length-1]=[x,z];wps=p;return true;}
+
+/* 相機與輸入 */
+const cam={yaw:0.6,pitch:0.85,dist:20,t:new T.Vector3(-20,1,-10)};
+const ptrs=new Map();let moved=0,pinch=0;
+canvas.addEventListener('pointerdown',e=>{ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});moved=0;canvas.setPointerCapture(e.pointerId);if(ptrs.size===2){const a=[...ptrs.values()];pinch=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);}});
+canvas.addEventListener('pointermove',e=>{const p=ptrs.get(e.pointerId);if(!p)return;const dx=e.clientX-p.x,dy=e.clientY-p.y;p.x=e.clientX;p.y=e.clientY;moved+=Math.abs(dx)+Math.abs(dy);
+  if(mode!=='game')return;
+  if(ptrs.size===2){const a=[...ptrs.values()],d=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);cam.dist=Math.max(8,Math.min(42,cam.dist*(pinch/d)));pinch=d;}
+  else{cam.yaw-=dx*0.006;cam.pitch=Math.max(0.3,Math.min(1.3,cam.pitch+dy*0.005));}});
+canvas.addEventListener('pointerup',e=>{const had=ptrs.delete(e.pointerId);if(!had||mode!=='game'||busy)return;
+  if(moved<8&&ptrs.size===0){const r=canvas.getBoundingClientRect(),v=new T.Vector2((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);
+    const ray=new T.Raycaster();ray.setFromCamera(v,camera);const pt=new T.Vector3();if(ray.ray.intersectPlane(new T.Plane(new T.Vector3(0,1,0),0),pt)){goTo(pt.x,pt.z);sfx('click');}}});
+canvas.addEventListener('pointercancel',e=>ptrs.delete(e.pointerId));
+canvas.addEventListener('wheel',e=>{if(mode!=='game')return;e.preventDefault();cam.dist=Math.max(8,Math.min(42,cam.dist+e.deltaY*0.02));},{passive:false});
+let armed=true,gateCd=0;
+const keys={},MOVEK=['arrowup','arrowdown','arrowleft','arrowright','w','a','s','d'];
+addEventListener('blur',()=>{for(const k in keys)keys[k]=false;});
+addEventListener('keydown',e=>{
+  if(e.key==='Escape'){if(!$('#modal').hidden){if(cancelRes)abortLevel();else closeModal();return;}if(!$('#dlg').hidden){$('#dlgSkip').click();return;}}
+  if(!$('#dlg').hidden&&(e.key===' '||e.key==='Enter'||e.key==='f'||e.key==='F')){e.preventDefault();$('#dlg').click();return;}
+  if(mode!=='game'||busy)return;const k=e.key.toLowerCase();
+  if(MOVEK.includes(k)){e.preventDefault();keys[k]=true;return;}
+  if('qert'.includes(k)&&k.length===1)keys[k]=true;
+  if(k==='f')interact();});
+addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
+function nearLv(){let best=-1,bd=3.8;const c=curLv();LVPOS.forEach((p,i)=>{if(!(save.res[i]||i===c))return;const d=Math.hypot(player.position.x-p[0],player.position.z-p[1]);if(d<bd){bd=d;best=i;}});return best;}
+let pendingReplay=null;
+function goLevel(i){const p=LVPOS[i];pendingReplay=(save.res[i]&&i!==curLv())?i:null;if(!goTo(p[0],p[1])){pendingReplay=null;toast('現在到不了那裡，先完成目前的任務。');}}
+function openLevelMenu(){if(busy||mode!=='game')return;menuOpen=true;
+  const c=curLv();const rows=PLAN.map((p,i)=>{const done=!!save.res[i],cur=i===c;
+    return '<div class="lvrow"><span>第 '+(i+1)+' 關　'+p.name+'</span><span>'+(done?'最佳 '+save.res[i].score+' 分':(cur?'進行中':'尚未解鎖'))+'</span>'+((done||cur)?'<button class="btn sm alt" data-go="'+i+'">前往</button>':'<span></span>')+'</div>';}).join('');
+  const m=modal('<div class="mhead"><span>選關　完成的關卡可以回頭再玩</span></div><div class="lvlist">'+rows+'</div><div class="mfoot"><span></span><button class="btn sm" id="lvClose">關閉</button></div>',true);
+  m.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{const k=+b.dataset.go;closeModal();goLevel(k);});$('#lvClose').onclick=closeModal;}
+$('#btnLv').addEventListener('click',()=>{ac();openLevelMenu();});
+$('#btnAct').addEventListener('click',()=>{ac();interact();});
+function navTarget(){const c=curLv();if(save.broken&&save.form&&!save.gateW)return [11.2,-8];
+  if(c<0)return null;if(c>=2&&c<=6&&!save.gateE)return [4.5,-8];if(c>=2&&c<=6&&!save.form)return [14,-8];return LVPOS[c];}
+$('#btnAuto').addEventListener('click',()=>{ac();if(busy)return;const t=navTarget();if(!t){toast('所有關卡都完成了，可以按「總結」查看。');return;}
+  if(Math.hypot(player.position.x-t[0],player.position.z-t[1])<1.8){toast('已經到了。');return;}
+  if(!goTo(t[0],t[1]))toast('這條路被擋住了。');});
+const mini=$('#mini'),mx=mini.getContext('2d');
+mini.addEventListener('click',e=>{ac();const r=mini.getBoundingClientRect();goTo((e.clientX-r.left)/r.width*80-40,(e.clientY-r.top)/r.height*80-40);});
+function drawMini(){const W=mini.width,k=W/80,X=x=>(x+40)*k;mx.fillStyle='#e8d99a';mx.fillRect(0,0,W,W);
+  mx.fillStyle='#8aa8ae';mx.fillRect(X(6),0,4*k,W);mx.fillStyle='#d9b45a';mx.fillRect(X(-27),X(-10),50*k,4*k);mx.fillRect(X(6),X(-10),4*k,4*k);
+  mx.fillStyle='#9a8f78';mx.fillRect(X(-32),X(-27),16*k,14*k);mx.fillStyle='#6c8a3c';mx.fillRect(X(14),X(-30),22*k,60*k);mx.globalAlpha=0.5;mx.fillRect(X(14),X(-30),22*k,60*k);mx.globalAlpha=1;
+  mx.fillStyle='#b9a37a';mx.fillRect(X(-27.5),X(11.5),7*k,5*k);
+  const c=curLv();LVPOS.forEach((p,i)=>{mx.beginPath();mx.arc(X(p[0]),X(p[1]),i===c?9:6,0,7);mx.fillStyle=save.res[i]?'#6fa86a':(i===c?'#ffd24a':'#9a9a8a');mx.fill();mx.lineWidth=3;mx.strokeStyle='#2a1d14';mx.stroke();});
+  mx.beginPath();mx.arc(X(player.position.x),X(player.position.z),8,0,7);mx.fillStyle='#c4352b';mx.fill();mx.lineWidth=3;mx.strokeStyle='#fff';mx.stroke();}
+
+/* 主迴圈 */
+let last=performance.now(),tAcc=0;
+function frame(now){requestAnimationFrame(frame);const dt=Math.min(0.05,(now-last)/1000);last=now;tAcc+=dt;if(document.hidden)return;
+  if(mode==='cover'||mode==='game'){
+    if(mode==='cover'){cam.yaw+=dt*0.08;cam.pitch=0.55;cam.dist=36;cam.t.lerp(new T.Vector3(-4,2,-6),0.05);}
+    else{if(keys.q)cam.yaw+=dt*1.6;if(keys.e)cam.yaw-=dt*1.6;if(keys.r)cam.pitch=Math.min(1.3,cam.pitch+dt);if(keys.t)cam.pitch=Math.max(0.3,cam.pitch-dt);
+      let mvx=0,mvz=0;
+      if(!busy){const f=(keys.arrowup||keys.w?1:0)-(keys.arrowdown||keys.s?1:0),r=(keys.arrowright||keys.d?1:0)-(keys.arrowleft||keys.a?1:0);
+        if(f||r){wps=[];mvx=-Math.sin(cam.yaw)*f+Math.cos(cam.yaw)*r;mvz=-Math.cos(cam.yaw)*f-Math.sin(cam.yaw)*r;const l=Math.hypot(mvx,mvz)||1;mvx/=l;mvz/=l;
+          const st=7*dt,px=player.position.x,pz=player.position.z,nx=px+mvx*st,nz=pz+mvz*st;
+          if(!blocked[ci(nz)*N+ci(nx)]){player.position.x=nx;player.position.z=nz;}
+          else if(!blocked[ci(pz)*N+ci(nx)])player.position.x=nx;
+          else if(!blocked[ci(nz)*N+ci(px)])player.position.z=nz;
+          player.rotation.y=Math.atan2(mvx,mvz);}}
+      if(!busy){const px=player.position.x,pz=player.position.z,nz=Math.abs(pz+8)<3.6,now=performance.now();
+        if(save.gateE&&!save.form&&!save.broken&&px>11)startTransform();
+        else if(save.form&&save.gateW&&px<5.5&&nz)startRevert();
+        else if(!save.gateE&&px>3.5&&px<6.6&&nz&&now>gateCd)startGate('E');
+        else if(save.form&&!save.gateW&&px>9.4&&px<12.6&&nz&&now>gateCd)startGate('W');
+        const cl=curLv();if(!busy&&cl>=0){const d=Math.hypot(px-LVPOS[cl][0],pz-LVPOS[cl][1]);if(d>3.4)armed=true;else if(d<2.3&&armed){armed=false;playLevel(cl);}}
+        if(pendingReplay!==null&&!busy){const q=LVPOS[pendingReplay],d=Math.hypot(px-q[0],pz-q[1]);if(d<2.3){const k=pendingReplay;pendingReplay=null;playLevel(k);}else if(!wps.length&&!(mvx||mvz))pendingReplay=null;}}
+      if(wps.length&&!busy){const w=wps[0],dx=w[0]-player.position.x,dz=w[1]-player.position.z,d=Math.hypot(dx,dz),st=7*dt;
+        if(d<=st){player.position.x=w[0];player.position.z=w[1];wps.shift();}else{player.position.x+=dx/d*st;player.position.z+=dz/d*st;player.rotation.y=Math.atan2(dx,dz);}
+        player.position.y=Math.abs(Math.sin(tAcc*14))*0.12;}else player.position.y=(mvx||mvz)?Math.abs(Math.sin(tAcc*14))*0.12:0;
+      cam.t.lerp(new T.Vector3(player.position.x,1.2,player.position.z),0.12);
+      const n=nearLv();$('#btnAct').disabled=(n<0||busy);
+      lv.forEach((o,i)=>{o.ring.scale.setScalar(1+0.06*Math.sin(tAcc*3+i));o.npc.position.y=0;});
+      const c=curLv();if(c>=0){const p=lv[c].npc;p.rotation.y=Math.atan2(player.position.x-LVPOS[c][0],player.position.z-LVPOS[c][1]);}
+      drawMini();}
+    doors.forEach(d=>{const tgt=-d.s*doorTarget*1.7;d.piv.rotation.y+=(tgt-d.piv.rotation.y)*Math.min(1,dt*3);});
+    beasts.forEach((b,i)=>{if(b.m.visible)b.m.position.y=Math.abs(Math.sin(tAcc*2+i))*0.04;});
+    const cp=Math.cos(cam.pitch),sp=Math.sin(cam.pitch);
+    camera.position.set(cam.t.x+Math.sin(cam.yaw)*cp*cam.dist,cam.t.y+sp*cam.dist,cam.t.z+Math.cos(cam.yaw)*cp*cam.dist);camera.lookAt(cam.t);
+    renderer.render(scene,camera);}}
+requestAnimationFrame(frame);
+
+/* 故事截圖：把舞臺擺好，用主 renderer 截一張圖 */
+const STAGES=[
+ {cam:[-21,3.4,-3],at:[-24,1.6,-13],king:1},
+ {cam:[-16.5,2.6,-6],at:[-22,1.4,-12],king:1,me:[-21,-11,Math.PI*0.75]},
+ {cam:[22.8,3,-3.3],at:[23,1.1,-8],tiger:[22,-8,Math.PI/2],fox:[24.4,-8,-Math.PI/2]},
+ {cam:[24.6,2.1,-5],at:[24.2,1.0,-8],tiger:[21.8,-8,Math.PI/2],fox:[24.4,-8,-Math.PI/2]},
+ {cam:[21,3,-2.2],at:[21,0.8,-8],tiger:[18.5,-8,Math.PI/2],fox:[22.2,-8,Math.PI/2]},
+ {cam:[15.5,2.2,-5.5],at:[22,1,-8],tiger:[19,-8,Math.PI/2],fox:[22.6,-8,Math.PI/2]},
+ {cam:[19,3.6,-3.5],at:[27,1,-8],tiger:[21,-8,Math.PI/2],fox:[24,-8,Math.PI/2],beasts:[[28,-9],[30.5,-7],[27,-6],[32,-9.5]]},
+ {cam:[26,2.8,-3],at:[24,1.2,-8],tiger:[24,-8,Math.PI/2],fox:[21.6,-8,Math.PI/2],beasts:[[33,-9],[35,-7],[34,-6],[33.5,-10]]}
+];
+function snap(i){const s=STAGES[i],W=640,H=360;
+  const pp=player.position.clone(),pr=player.rotation.y;
+  tiger.visible=!!s.tiger;foxS.visible=!!s.fox;
+  if(s.tiger){tiger.position.set(s.tiger[0],0,s.tiger[1]);tiger.rotation.y=s.tiger[2];}
+  if(s.fox){foxS.position.set(s.fox[0],0,s.fox[1]);foxS.rotation.y=s.fox[2];}
+  beasts.forEach((b,k)=>{b.m.visible=!!s.beasts;if(s.beasts){b.m.position.set(s.beasts[k][0],0,s.beasts[k][1]);b.m.rotation.y=Math.PI/2;}});
+  if(s.me){player.position.set(s.me[0],0,s.me[1]);player.rotation.y=s.me[2];}else player.visible=false;
+  renderer.setPixelRatio(1);renderer.setSize(W,H,false);camera.aspect=W/H;camera.updateProjectionMatrix();
+  camera.position.set(s.cam[0],s.cam[1],s.cam[2]);camera.lookAt(s.at[0],s.at[1],s.at[2]);renderer.render(scene,camera);
+  let url='';try{url=renderer.domElement.toDataURL('image/jpeg',0.82);}catch(e){}
+  player.visible=true;player.position.copy(pp);player.rotation.y=pr;resize();defaultActors();return url;}
+
+/* ================= 角色預覽 ================= */
+const prevCv=$('#prev'),pr=new T.WebGLRenderer({canvas:prevCv,antialias:true,alpha:true}),ps=new T.Scene(),pc=new T.PerspectiveCamera(35,0.75,0.1,50);
+ps.add(new T.HemisphereLight(0xfff1c8,0x9a8a5a,1.0));const pl=new T.DirectionalLight(0xffffff,0.6);pl.position.set(3,6,5);ps.add(pl);
+let pm=null,prevOn=false;
+function rebuildPrev(){if(pm)ps.remove(pm);pm=human(save.look);ps.add(pm);}
+function prevLoop(){if(!prevOn)return;requestAnimationFrame(prevLoop);const w=prevCv.clientWidth,h=prevCv.clientHeight;if(w&&h){if(prevCv.width!==w*2||prevCv.height!==h*2){pr.setPixelRatio(2);pr.setSize(w,h,false);pc.aspect=w/h;pc.updateProjectionMatrix();}}
+  pm.rotation.y+=0.012;pc.position.set(0,1.7,6.6);pc.lookAt(0,1.45,0);pr.render(ps,pc);}
+const OPT=[['gender','性別',[['m','男'],['f','女']]],['beard','鬍鬚',[['none','無'],['short','短鬚'],['long','長鬚']]],['hat','帽冠',[['guan','文士冠'],['dou','斗笠'],['bun','髮髻'],['none','無']]],['outfit','服裝',[['robe','長袍'],['deep','深衣'],['short','短衣']]],['acc','配件',[['none','無'],['scroll','竹簡'],['fan','羽扇'],['jade','玉珮']]]];
+const COLORS=['#2e6f7e','#c4352b','#3d6b3a','#7a4a8a','#b8862b','#2a2a2a'];
+function buildOpts(){const box=$('#opts');box.innerHTML='';
+  OPT.forEach(o=>{const row=document.createElement('div');row.className='optRow';row.innerHTML='<label>'+o[1]+'</label>';
+    o[2].forEach(v=>{const b=document.createElement('button');b.className='chip';b.textContent=v[1];b.setAttribute('aria-pressed',save.look[o[0]]===v[0]);
+      b.onclick=()=>{save.look[o[0]]=v[0];sfx('click');buildOpts();rebuildPrev();};row.appendChild(b);});box.appendChild(row);});
+  const cr=document.createElement('div');cr.className='optRow';cr.innerHTML='<label>主色</label>';
+  COLORS.forEach(c=>{const b=document.createElement('button');b.className='sw';b.style.background=c;b.setAttribute('aria-label','主色 '+c);b.setAttribute('aria-pressed',save.look.color===c);b.onclick=()=>{save.look.color=c;sfx('click');buildOpts();rebuildPrev();};cr.appendChild(b);});box.appendChild(cr);
+  const nr=document.createElement('div');nr.className='optRow';nr.innerHTML='<label for="nameIn">名字</label><input id="nameIn" maxlength="6" value="'+save.name.replace(/"/g,'')+'">';box.appendChild(nr);
+  $('#nameIn').oninput=e=>{save.name=e.target.value.trim()||'江乙';};}
+
+/* ================= 畫面切換 ================= */
+function show(id){$$('.screen').forEach(s=>s.classList.toggle('on',s.id===id));
+  mode=id==='cover'?'cover':(id==='game'?'game':'other');prevOn=id==='create';if(prevOn){rebuildPrev();prevLoop();}musicMode();}
+function toast(t,ms){const e=$('#toast');e.textContent=t;e.hidden=false;clearTimeout(toast.tm);toast.tm=setTimeout(()=>e.hidden=true,ms||2800);}
+
+/* 封面 */
+function coverState(){const started=save.res.some(Boolean)||save.created;$('#cvCont').hidden=!started;$('#cvReset').hidden=!started;$('#cvStart').textContent=started?'重新設定角色':'開始冒險';}
+$('#cvStart').onclick=()=>{ac();sfx('click');buildOpts();show('create');};
+$('#cvCont').onclick=()=>{ac();sfx('click');setLook();enterGame();};
+let rc=false;$('#cvReset').onclick=function(){if(!rc){rc=true;this.textContent='再按一次確認清除存檔';setTimeout(()=>{rc=false;this.textContent='重新開始';},3000);return;}rc=false;resetSave();placePlayer();setLook();applyProgress();this.textContent='重新開始';coverState();toast('已清除存檔');};
+$('#crBack').onclick=()=>{sfx('click');show('cover');};
+$('#crOk').onclick=()=>{sfx('click');save.created=true;store();setLook();inPage=0;renderIntro();show('intro');};
+
+/* 人物介紹（2 頁） */
+const INTRO=[
+ {title:'人物介紹（一）楚國君臣',cards:[
+  ['江','江乙','楚國大臣。他用「狐假虎威」的故事回答楚宣王的問題。這一次，你就是江乙。'],
+  ['王','楚宣王','楚國的國君。聽說北方各國都害怕昭奚恤，便詢問原因。'],
+  ['奚','昭奚恤','楚國大將，聲名顯赫，北方各國對他畏懼不已。']]},
+ {title:'人物介紹（二）寓言裡的動物',cards:[
+  ['狐','狐狸','被老虎抓到後，聲稱自己是天帝派來管理百獸的，因此不可被吃。'],
+  ['虎','老虎','獵捕各種野獸作為食物。聽信狐狸的話，跟在狐狸後面走。'],
+  ['獸','百獸','看到老虎就嚇得落荒而逃。他們害怕的其實是老虎。']]}
+];
+let inPage=0;
+function renderIntro(){const p=INTRO[inPage];$('#inTitle').textContent=p.title;$('#inNo').textContent=(inPage+1)+' / '+INTRO.length;
+  $('#inCards').innerHTML=p.cards.map(c=>'<div class="card"><div class="glyph">'+c[0]+'</div><div><b>'+c[1]+'</b><p>'+c[2]+'</p></div></div>').join('');
+  $('#inPrev').textContent=inPage?'上一頁':'回角色設定';$('#inNext').textContent=inPage<INTRO.length-1?'下一頁':'進入故事導讀';}
+$('#inPrev').onclick=()=>{sfx('click');if(inPage){inPage--;renderIntro();}else{buildOpts();show('create');}};
+$('#inNext').onclick=()=>{sfx('click');if(inPage<INTRO.length-1){inPage++;renderIntro();}else startStory();};
+
+/* 故事導讀（8 頁＋總整理） */
+let stPage=0,stImgs=[];
+function startStory(){stPage=0;stImgs=[];show('story');$('#stBody').innerHTML='<p>正在繪製場景……</p>';
+  setTimeout(()=>{for(let i=0;i<STORY.length;i++)stImgs.push(snap(STORY[i].st));renderStory();},60);}
+function renderStory(){const n=STORY.length,last=stPage===n;$('#stDots').innerHTML=Array.from({length:n+1},(_,i)=>'<i class="'+(i===stPage?'on':'')+'"></i>').join('');
+  if(!last){const s=STORY[stPage];$('#stTag').textContent=s.tag;$('#stBody').innerHTML='<img alt="'+s.tag+'場景：'+s.t.replace(/"/g,'')+'" src="'+stImgs[stPage]+'"><div class="txt">'+s.t+'</div>';}
+  else{$('#stTag').textContent='總整理';$('#stBody').style.display='block';
+    $('#stBody').innerHTML='<div class="sum3"><div><span class="tag">起因</span><br>老虎抓到狐狸，狐狸聲稱自己是天帝派來管理百獸的，不可被吃。</div><div><span class="tag">經過</span><br>狐狸提議由自己走在前面，讓老虎看看百獸的反應。</div><div><span class="tag">結果</span><br>百獸因害怕老虎而逃竄，卻讓老虎誤以為他們懼怕狐狸。</div></div><p style="font-family:var(--serif);line-height:1.9;margin:14px 0 0">這則寓言後來演變為成語「狐假虎威」，比喻憑藉別人的權勢欺壓、恐嚇他人。它也提醒我們，要深入觀察、思考，才不會被表象蒙蔽。</p>';}
+  if(!last)$('#stBody').style.display='';
+  $('#stPrev').disabled=stPage===0;$('#stNext').textContent=last?'進入遊戲':'下一頁';}
+$('#stPrev').onclick=()=>{sfx('click');if(stPage>0){stPage--;renderStory();}};
+$('#stNext').onclick=()=>{sfx('click');if(stPage<STORY.length){stPage++;renderStory();}else enterGame();};
+$('#stSkip').onclick=()=>{sfx('click');enterGame();};
+
+/* ================= 對話、彈窗、小遊戲 ================= */
+function say(name,lines){return new Promise(done=>{const box=$('#dlg'),tx=$('#dlgText');$('#dlgName').textContent=name;box.hidden=false;
+  let i=0,pos=0,tm=null,text='';
+  function start(){text=lines[i];pos=0;tx.textContent='';clearInterval(tm);tm=setInterval(()=>{pos++;tx.textContent=text.slice(0,pos);if(pos%3===0)blip();if(pos>=text.length)clearInterval(tm);},34);}
+  function end(){clearInterval(tm);box.hidden=true;box.onclick=null;done();}
+  box.onclick=e=>{if(e.target.id==='dlgSkip'){end();return;}
+    if(pos<text.length){clearInterval(tm);pos=text.length;tx.textContent=text;return;}
+    i++;if(i>=lines.length)end();else start();};
+  start();});}
+let menuOpen=false;
+const modal=(html,nox)=>{const b=$('#modalBody');b.innerHTML=html+(nox?'':'<button class="btn sm alt mx" id="mclose" type="button">✕ 離開 (Esc)</button>');$('#modal').hidden=false;musicMode();return b;};
+function abortLevel(){if(!cancelRes)return;lvTok++;const f=cancelRes;cancelRes=null;closeModal();f();}
+$('#modalBody').addEventListener('click',e=>{if(e.target.id==='mclose')abortLevel();});
+const closeModal=()=>{$('#modal').hidden=true;$('#modalBody').innerHTML='';menuOpen=false;A.speed=false;musicMode();};
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
+const penalty=m=>Math.min(0.3,0.1*m);
+const pct=m=>Math.round(100*(1-penalty(m)));
+
+function runQuiz(items,o){return new Promise(done=>{let i=0,mist=0,good=0;
+  function render(){const it=items[i];let opts=it.opts.map((t,k)=>({t,k}));if(!o.fixed)opts=shuffle(opts);
+    const m=modal('<div class="mhead"><span>'+o.title+'</span><span>'+(i+1)+' / '+items.length+'</span></div>'+(o.gauge?'<div class="gauge" title="智慧值"><i style="width:'+(good/items.length*100)+'%"></i></div><div style="font-size:.85rem;margin-bottom:4px">智慧值 '+Math.round(good/items.length*100)+'</div>':'')+'<p class="q">'+it.q+'</p><div class="opts">'+opts.map(x=>'<button class="opt" data-k="'+x.k+'">'+x.t+'</button>').join('')+'</div><p class="fb" id="fb" aria-live="polite"></p><div class="mfoot"><span>失誤 '+mist+' 次</span><button class="btn sm" id="nx" hidden>'+(i===items.length-1?'完成':'下一題')+'</button></div>');
+    let solved=false;
+    m.querySelectorAll('.opt').forEach(b=>b.onclick=()=>{if(solved)return;const k=+b.dataset.k;
+      if(k===it.a){solved=true;b.classList.add('ok');sfx('ok');good++;m.querySelectorAll('.opt').forEach(x=>x.disabled=true);$('#fb').textContent='答對了！'+it.why;$('#nx').hidden=false;$('#nx').focus();if(o.gauge)m.querySelector('.gauge i').style.width=(good/items.length*100)+'%';}
+      else{b.classList.add('no');b.disabled=true;mist++;sfx('bad');$('#fb').textContent='再想想看。'+(o.hint?'提示：回到課文找答案。':'');m.querySelector('.mfoot span').textContent='失誤 '+mist+' 次';}});
+    $('#nx').onclick=()=>{sfx('click');i++;if(i>=items.length){closeModal();done(mist);}else render();};}
+  render();});}
+const B3=['老虎','百獸','狐狸'];
+const CLS=[
+ ['「虎求百獸而食之」的「之」，指的是？',1,'之：代名詞，在此指「百獸」。'],
+ ['「得狐」的「狐」，指的是？',2,'狐就是狐狸，是被老虎抓到的。'],
+ ['「子無敢食我也」的「子」，指的是？',0,'子：第二人稱代名詞，同「你」，在此指「老虎」。'],
+ ['「天帝使我長百獸」的「我」，指的是？',2,'這句話是狐狸說的，所以「我」指狐狸。'],
+ ['「吾為子先行」的「吾」，指的是？',2,'吾：我。說話的是狐狸。'],
+ ['「子隨我後」的「子」，指的是？',0,'狐狸對老虎說：你跟在我後面。子指老虎。'],
+ ['「虎以為然，故遂與之行」的「之」，指的是？',2,'之：代名詞，在此指「狐狸」。'],
+ ['「獸見之皆走」的「獸」，指的是？',1,'獸指的是百獸，他們看見後都逃跑了。'],
+ ['「獸見之皆走」的「之」，指的是？',0,'之：代名詞，在此指「老虎」。百獸看見老虎都逃跑。'],
+ ['「虎不知獸畏己而走也」的「己」，指的是？',0,'獸畏己：百獸害怕的是自己，也就是老虎。']
+].map(x=>({q:x[0]+'請分類：',opts:B3,a:x[1],why:x[2]}));
+function quiz2Items(){return shuffle(QZ2).map(q=>({q:q.q,opts:['正確','錯誤'],a:q.t?0:1,why:q.why}));}
+
+async function runSeq(){const names=[['北','鹿',1,0,3],['西','驢',0,1,2],['東','兔',2,1,4],['南','羊',1,2,5]];let mist=0;
+  const m=modal('<div class="mhead"><span>百獸點名</span><span id="rd"></span></div><p id="sq" class="q" style="margin:.2em 0">記住動物探頭的順序。</p><div class="pads">'+
+    [0,1,2].map(r=>[0,1,2].map(c=>{const n=names.findIndex(a=>a[2]===c&&a[3]===r);return n>=0?'<button class="pad" data-n="'+n+'" disabled>'+names[n][0]+'<br>'+names[n][1]+'</button>':'<span></span>';}).join('')).join('')+'</div><div class="mfoot"><span id="ms">失誤 0 次</span></div>');
+  const pads=[...m.querySelectorAll('.pad')];const padN=n=>pads.find(p=>+p.dataset.n===n);
+  const lit=async n=>{const p=padN(n);p.classList.add('lit');sfx(names[n][4]);await sleep(520);p.classList.remove('lit');await sleep(180);};
+  for(let r=0;r<3;r++){const len=3+r;const seq=Array.from({length:len},()=>Math.floor(Math.random()*4));$('#rd').textContent='第 '+(r+1)+' 回合／共 3 回合';
+    for(;;){pads.forEach(p=>p.disabled=true);$('#sq').textContent='看清楚順序……';await sleep(500);for(const n of seq)await lit(n);
+      $('#sq').textContent='輪到你了，依序點出動物。';pads.forEach(p=>p.disabled=false);
+      const ok=await new Promise(res=>{let k=0;pads.forEach(p=>p.onclick=async()=>{const n=+p.dataset.n;p.classList.add('lit');sfx(names[n][4]);setTimeout(()=>p.classList.remove('lit'),200);
+        if(n!==seq[k]){pads.forEach(x=>x.onclick=null);res(false);return;}k++;if(k===seq.length){pads.forEach(x=>x.onclick=null);res(true);}});});
+      if(ok){sfx('ok');$('#sq').textContent='答對了！';await sleep(700);break;}
+      mist++;sfx('bad');$('#ms').textContent='失誤 '+mist+' 次';$('#sq').textContent='順序不對，再來一次。';pads.forEach(p=>p.disabled=true);await sleep(900);}}
+  closeModal();return mist;}
+
+/* ===== 第 4～8 關 ===== */
+const IDIOMS=[
+ {w:'狐假虎威',m:'憑藉別人的權勢欺壓、恐嚇他人',x:['形容做事非常小心','形容兩人合作無間','形容非常勇敢'],why:'狐狸借老虎的威風嚇跑百獸，後來比喻憑藉別人的權勢欺壓、恐嚇他人。'},
+ {w:'鷸蚌相爭',m:'雙方爭持不下，讓第三者得利',x:['兩個人互相幫忙','形容做事專心','形容爭先恐後'],why:'鷸和蚌相持不下，結果被漁夫一起帶走。課前想想裡，教練用它提醒球員不要讓敵隊有機可乘。'},
+ {w:'畫蛇添足',m:'多此一舉，反而把事情弄糟',x:['畫得非常逼真','做事精益求精','把小事變大事'],why:'課文背景說明裡，與狐假虎威、鷸蚌相爭同為《戰國策》的著名寓言。'},
+ {w:'落荒而逃',m:'受到驚嚇，慌慌張張地逃跑',x:['大方地離開','勇敢追上前','悠閒地散步'],why:'語譯：百獸看到老虎，全都嚇得落荒而逃。'},
+ {w:'虛張聲勢',m:'假裝強大，用來嚇唬人',x:['大聲唱歌','真正有實力','默默努力'],why:'多元思考提到：狐狸是為了嚇人而虛張聲勢，還是為了求生而急中生智？'}
+];
+async function runScramble(){let mist=0;
+  for(let n=0;n<IDIOMS.length;n++){const it=IDIOMS[n];
+    let chars=it.w.split('').map((c,k)=>({c,k}));do{chars=shuffle(chars);}while(chars.map(x=>x.c).join('')===it.w);
+    const picked=[];
+    await new Promise(res=>{
+      function draw(){const m=modal('<div class="mhead"><span>成語拼字</span><span>'+(n+1)+' / '+IDIOMS.length+'</span></div><p class="q" style="margin:.2em 0">依序點選國字，排成正確的成語。</p><div class="slots">'+it.w.split('').map((_,i)=>'<div class="slot">'+(picked[i]?picked[i].c:'')+'</div>').join('')+'</div><div class="chars">'+chars.map(x=>'<button class="chb" data-k="'+x.k+'"'+(picked.includes(x)?' disabled':'')+'>'+x.c+'</button>').join('')+'</div><div class="mfoot"><span>失誤 '+mist+' 次</span><button class="btn sm alt" id="clr">清除重排</button></div>');
+        m.querySelectorAll('.chb').forEach(b=>b.onclick=()=>{const x=chars.find(c=>c.k===+b.dataset.k);picked.push(x);sfx('click');
+          if(picked.length===it.w.length){if(picked.map(c=>c.c).join('')===it.w){sfx('ok');draw();later(res,600);}else{mist++;sfx('bad');picked.length=0;draw();}}else draw();});
+        $('#clr').onclick=()=>{picked.length=0;draw();};}
+      draw();});
+    mist+=await runQuiz([{q:'「'+it.w+'」的意思是？',opts:[it.m].concat(it.x),a:0,why:it.why}],{title:'成語拼字　'+(n+1)+' / '+IDIOMS.length});}
+  return mist;}
+const EVENTS=['老虎抓到了一隻狐狸。','狐狸說自己是天帝派來管理百獸的，老虎不可以吃牠。','狐狸提議走在前面，讓老虎看看百獸的反應。','老虎覺得有道理，跟著狐狸走。','百獸看到老虎，嚇得落荒而逃。','老虎以為百獸是害怕狐狸。'];
+const QZ5=[
+ {q:'這則寓言的「起因」是什麼？',opts:['老虎抓到狐狸，狐狸聲稱自己是天帝派來管理百獸的，不可被吃','百獸看到老虎全都逃跑','老虎跟著狐狸一起走','楚宣王詢問北方各國畏懼昭奚恤的緣故'],a:0,why:'起因：老虎抓到狐狸，狐狸聲稱自己是天帝派來管理百獸的，不可被吃。'},
+ {q:'這則寓言的「經過」是什麼？',opts:['狐狸提議由自己走在前面，讓老虎看百獸的反應','老虎放走了狐狸','百獸聯合起來對抗老虎','狐狸請天帝出面作證'],a:0,why:'經過：狐狸提議由自己走在前面，讓老虎看百獸的反應。'},
+ {q:'這則寓言的「結果」是什麼？',opts:['百獸因害怕老虎而逃竄，卻讓老虎誤以為他們懼怕狐狸','狐狸被老虎吃掉了','老虎發現百獸怕的是自己','狐狸和老虎成了朋友'],a:0,why:'結果：百獸因害怕老虎而逃竄，卻讓老虎誤以為他們懼怕狐狸。'}
+];
+async function runOrder(){let mist=0,k=0;const order=shuffle(EVENTS.map((t,i)=>({t,i})));
+  await new Promise(res=>{
+    function draw(){const m=modal('<div class="mhead"><span>故事排序</span><span>'+k+' / '+EVENTS.length+'</span></div><p class="q" style="margin:.2em 0 .6em">依故事發生的先後，依序點選事件。</p><div class="evs">'+order.map(o=>'<button class="opt'+(o.i<k?' ok':'')+'" data-i="'+o.i+'"'+(o.i<k?' disabled':'')+'>'+(o.i<k?'<span class="seqn">'+(o.i+1)+'</span>':'')+o.t+'</button>').join('')+'</div><div class="mfoot"><span>失誤 '+mist+' 次</span></div>');
+      m.querySelectorAll('.opt').forEach(b=>b.onclick=()=>{if(+b.dataset.i===k){k++;sfx('ok');draw();if(k===EVENTS.length)later(res,800);}else{mist++;sfx('bad');draw();}});}
+    draw();});
+  mist+=await runQuiz(QZ5,{title:'故事排序：起因、經過、結果'});return mist;}
+const PAIRS=[['假','借','「假」是借的意思。狐假虎威，就是狐狸借老虎的威風。'],['曰','說','「曰」是說的意思。狐曰：就是狐狸說。'],['子','你（在此指老虎）','「子」是第二人稱代名詞，同「你」，在這裡指老虎。'],['使','命令','「使」是命令的意思。天帝使我長百獸，是天帝命令我管理百獸。'],['吾','我','「吾」是我的意思。'],['遂','就、於是','「遂」是就、於是的意思。遂與之行，是於是就跟著狐狸走。']];
+async function runMatch(){let mist=0;const cards=shuffle(PAIRS.flatMap((p,i)=>[{id:i,t:p[0],k:'w'},{id:i,t:p[1],k:'m'}]));const st=cards.map(()=>0);
+  await new Promise(res=>{let first=-1,lock=false,left=PAIRS.length,msg='';
+    function draw(){const m=modal('<div class="mhead"><span>詞語配對</span><span>還剩 '+left+' 組</span></div><p class="q" style="margin:.2em 0">翻開兩張牌，一張<span class="lg kw">原文</span>、一張<span class="lg km">解釋</span>，配成一對。</p><div class="fgrid">'+cards.map((c,i)=>'<button class="fc k'+c.k+(st[i]===1?' up':st[i]===2?' done':'')+'" data-i="'+i+'">'+(st[i]?'<span class="fl">'+(c.k==='w'?'原文':'解釋')+'</span>'+c.t:'？')+'</button>').join('')+'</div><p class="fb" style="min-height:3.4em">'+msg+'</p><div class="mfoot"><span>失誤 '+mist+' 次</span></div>');
+      m.querySelectorAll('.fc').forEach(b=>b.onclick=()=>{const i=+b.dataset.i;if(lock||st[i]!==0)return;st[i]=1;sfx('click');
+        if(first<0){first=i;draw();return;}
+        if(cards[first].id===cards[i].id){st[first]=2;st[i]=2;left--;msg='答對了！'+PAIRS[cards[i].id][2];first=-1;sfx('ok');draw();if(left===0)later(res,800);}
+        else{mist++;msg='不是一對，再試試。';sfx('bad');lock=true;draw();const f=first;later(()=>{st[f]=0;st[i]=0;first=-1;lock=false;draw();},800);}});}
+    draw();});
+  closeModal();return mist;}
+const FILL=[
+ {q:'虎求百獸而食之，得（　）。',opts:['狐','兔','鹿','羊'],a:0,why:'老虎獵捕各種野獸作為食物，抓到了一隻狐狸。'},
+ {q:'今子食我，是（　）天帝命也。',opts:['逆','順','讓','謝'],a:0,why:'「逆天帝命」就是違背天帝的命令。'},
+ {q:'子以我為不信，（　）為子先行。',opts:['吾','汝','彼','爾'],a:0,why:'吾：我。我可以走在你前面。'},
+ {q:'觀百獸之見我而敢不（　）乎？',opts:['走','來','食','戰'],a:0,why:'敢不走乎：怎敢不逃跑呢？走，逃跑。'},
+ {q:'虎以為然，故（　）與之行。',opts:['遂','未','忽','難'],a:0,why:'遂：就、於是。'},
+ {q:'虎不知獸（　）己而走也。',opts:['畏','愛','救','追'],a:0,why:'老虎不知道百獸是因為害怕自己才逃跑。'}
+];
+const SPEED=[
+ {q:'「假」在課文中的意思是？',opts:['借','真實','放假','假裝'],a:0},
+ {q:'「怎敢不走乎」的「走」是什麼意思？',opts:['逃跑','行走','散步','離開'],a:0},
+ {q:'「吾為子先行」的「吾」是什麼意思？',opts:['我','你','他','吳'],a:0},
+ {q:'「子無敢食我也」的「子」指誰？',opts:['老虎','狐狸','百獸','天帝'],a:0},
+ {q:'「獸見之皆走」的「之」代表誰？',opts:['老虎','狐狸','百獸','天帝'],a:0},
+ {q:'「遂與之行」的「之」代表誰？',opts:['狐狸','老虎','百獸','楚宣王'],a:0},
+ {q:'「觀百獸之見我」的「之」是什麼？',opts:['助詞，沒有特別的意思','代名詞，指老虎','代名詞，指狐狸','到、往'],a:0},
+ {q:'「虎以為然」的「以為然」是什麼意思？',opts:['認為是對的','認為不對','以為自然','不知道'],a:0},
+ {q:'「天帝使我長百獸」的「使」是什麼意思？',opts:['命令','使用','大使','假使'],a:0}
+];
+['假：借。「狐假虎威」就是狐狸借老虎的威風。','走：逃跑。「敢不走乎」是「怎敢不逃跑呢」。','吾：我。這是狐狸說的話。','子：第二人稱代名詞，同「你」，在此指老虎。','之：代名詞，在此指老虎。百獸看見老虎都逃跑。','之：代名詞，在此指狐狸。老虎於是跟著狐狸走。','之：助詞，沒有特別的意思，連接「百獸」和「見我」，可解釋成「百獸看見我（這件事情）」。','以為然：認為是對的。然，是對、正確的意思。','使：命令。天帝命令我管理百獸。'].forEach((w,i)=>{SPEED[i].why=w;});
+function runSpeed(src,title,total,fixed){src=src||SPEED;title=title||'字義快答';total=total||55000;return new Promise(res=>{A.speed=true;const tk=lvTok,qs=shuffle(src);let t0=performance.now();let i=0,mist=0,tm=null,paused=false;
+  function finish(timeUp){clearInterval(tm);const rest=qs.length-i;closeModal();if(timeUp)toast('時間到！還有 '+rest+' 題沒答，各算失誤 1 次。',3500);res(mist+rest);}
+  function render(){if(i>=qs.length){finish(false);return;}const it=qs[i],om=it.opts.map((t,k)=>({t,k})),opts=fixed?om:shuffle(om);
+    const m=modal('<div class="mhead"><span>'+title+'</span><span>'+(i+1)+' / '+qs.length+'</span></div><div class="tbar"><i id="tb"></i></div><p class="q">'+it.q+'</p><div class="opts">'+opts.map(x=>'<button class="opt" data-k="'+x.k+'">'+x.t+'</button>').join('')+'</div><div class="mfoot"><span>失誤 '+mist+' 次</span></div>');
+    m.querySelectorAll('.opt').forEach(b=>b.onclick=()=>{if(+b.dataset.k===it.a){sfx('ok');m.querySelectorAll('.opt').forEach(x=>x.disabled=true);b.classList.add('ok');const f=document.createElement('p');f.className='fb';f.textContent='答對了！'+(it.why||'');m.querySelector('.mfoot').before(f);paused=true;later(()=>{paused=false;i++;render();},it.why?2200:300);}else{b.classList.add('no');b.disabled=true;mist++;sfx('bad');m.querySelector('.mfoot span').textContent='失誤 '+mist+' 次';}});}
+  tm=setInterval(()=>{if(tk!==lvTok){clearInterval(tm);return;}if(paused){t0+=100;return;}const el=performance.now()-t0,tb=$('#tb');if(tb)tb.style.width=Math.max(0,100-el/total*100)+'%';if(el>=total)finish(true);},100);
+  render();});}
+
+/* ===== 第 9～13 關 ===== */
+const WB=[
+ {s:'戰國策是由西漢劉向所（　）而成。',w:'編纂'},
+ {s:'昭奚恤聲名（　），北方各國都很敬畏他。',w:'顯赫'},
+ {s:'楚宣王（　）大臣們，北方各國害怕昭奚恤的緣由。',w:'詢問'},
+ {s:'北方各國對昭奚恤（　）不已。',w:'畏懼'},
+ {s:'狐假虎威（　）了楚宣王與群臣的一段對話。',w:'記述'},
+ {s:'狐假虎威是一則（　）故事，常含有勸喻或諷刺的意味。',w:'寓言'},
+ {s:'這則故事用來（　）那些藉著有權者的威勢欺壓他人的人。',w:'諷刺'},
+ {s:'要深入觀察、思考，才不會被表象所（　）。',w:'蒙蔽'}
+];
+const WBM={編纂:'編輯、整理成書。',顯赫:'名聲、地位很高，非常有名。',詢問:'發問、請教。',畏懼:'害怕。',記述:'記錄並敘述。',寓言:'用故事說明道理，常含有勸喻或諷刺意味的文學體裁。',諷刺:'用含蓄的話指出別人的缺點或過失。',蒙蔽:'遮住，使人看不清真相。'};
+async function runWordBank(){let mist=0;const items=shuffle(WB),bank=shuffle(WB.map(x=>x.w)),used=[];
+  for(let i=0;i<items.length;i++){const it=items[i];
+    await new Promise(res=>{function draw(){const m=modal('<div class="mhead"><span>詞語選填</span><span>'+(i+1)+' / '+items.length+'</span></div><p class="q">'+it.s+'</p><div class="chars">'+bank.map(w=>'<button class="chip" style="font-size:1.1rem;padding:.5em .9em" data-w="'+w+'"'+(used.includes(w)?' disabled':'')+'>'+w+'</button>').join('')+'</div><p class="fb" id="fb"></p><div class="mfoot"><span>失誤 '+mist+' 次</span></div>');
+      m.querySelectorAll('.chip').forEach(b=>b.onclick=()=>{if(b.dataset.w===it.w){sfx('ok');used.push(it.w);m.querySelectorAll('.chip').forEach(x=>x.disabled=true);$('#fb').textContent='答對了！「'+it.w+'」：'+WBM[it.w];later(res,2000);}else{mist++;sfx('bad');draw();$('#fb').textContent='「'+b.dataset.w+'」放在這裡不太通順，再想想。';}});}
+      draw();});}
+  closeModal();return mist;}
+const PROOF=[
+ {s:'楚大將昭奚恤聲名顯嚇，北方各國都畏懼他。',w:'嚇',c:'赫',o:['赫','赦','郝']},
+ {s:'寓言常含有勸喻或風刺的意味。',w:'風',c:'諷',o:['諷','誦','訟']},
+ {s:'狐狸想用天帝的名義秀導老虎。',w:'秀',c:'誘',o:['誘','莠','透']},
+ {s:'要深入觀察，才不會被表象所蒙敝。',w:'敝',c:'蔽',o:['蔽','弊','幣']},
+ {s:'楚宣王洵問大臣們其中的緣由。',w:'洵',c:'詢',o:['詢','尋','荀']}
+];
+['顯赫：名聲、地位很高，非常有名。','諷刺：用含蓄的話指出別人的缺點或過失。','誘導：引導、勸誘別人。','蒙蔽：遮住，使人看不清真相。','詢問：發問、請教。'].forEach((w,i)=>{PROOF[i].why=w;});
+async function runProof(){let mist=0;
+  for(let n=0;n<PROOF.length;n++){const it=PROOF[n];let stage=1;
+    await new Promise(res=>{function draw(){
+      const body=stage===1?'<p class="q" style="margin:.2em 0">這句話裡有一個錯字，請點出來。</p><div class="chars" style="gap:4px">'+it.s.split('').map((c,i)=>/[，。、]/.test(c)?'<span style="font-size:1.6rem;font-family:var(--serif)">'+c+'</span>':'<button class="chb" style="width:44px;height:44px;font-size:1.3rem" data-c="'+c+'">'+c+'</button>').join('')+'</div>'
+        :'<p class="q" style="margin:.2em 0">「'+it.w+'」是錯字，請選出正確的字。</p><div class="chars">'+shuffle(it.o).map(c=>'<button class="chb" data-c="'+c+'">'+c+'</button>').join('')+'</div>';
+      const m=modal('<div class="mhead"><span>校對錯字</span><span>'+(n+1)+' / '+PROOF.length+'</span></div>'+body+'<div class="mfoot"><span>失誤 '+mist+' 次</span></div>');
+      m.querySelectorAll('.chb').forEach(b=>b.onclick=()=>{
+        if(stage===1){if(b.dataset.c===it.w){sfx('ok');stage=2;draw();}else{mist++;sfx('bad');draw();}}
+        else{if(b.dataset.c===it.c){sfx('ok');m.querySelectorAll('.chb').forEach(x=>x.disabled=true);const f=document.createElement('p');f.className='fb';f.textContent='答對了！'+it.why;m.querySelector('.mfoot').before(f);later(res,2200);}else{mist++;sfx('bad');draw();}}});}
+      draw();});}
+  closeModal();return mist;}
+const SENT=[['老虎','獵捕','各種野獸','作為食物'],['天帝','命令','我','管理','百獸'],['你','跟在','我','後面'],['老虎','認為','狐狸的話','有道理'],['百獸','看到老虎','全都嚇得','落荒而逃']];
+async function runSentence(){let mist=0;
+  for(let n=0;n<SENT.length;n++){const ans=SENT[n];let k=0;const chips=shuffle(ans.map((t,i)=>({t,i})));
+    await new Promise(res=>{function draw(){const m=modal('<div class="mhead"><span>句子重組</span><span>'+(n+1)+' / '+SENT.length+'</span></div><p class="q" style="margin:.2em 0">依序點選詞語，排成通順的句子。</p><div class="q" style="min-height:2.6em;border-bottom:2px dashed var(--line)">'+ans.slice(0,k).join('')+'</div><div class="chars">'+chips.map(c=>'<button class="chip" style="font-size:1.1rem;padding:.5em .9em" data-i="'+c.i+'"'+(c.i<k?' disabled':'')+'>'+c.t+'</button>').join('')+'</div><div class="mfoot"><span>失誤 '+mist+' 次</span></div>');
+      m.querySelectorAll('.chip').forEach(b=>b.onclick=()=>{if(+b.dataset.i===k){k++;sfx('click');draw();if(k===ans.length){sfx('ok');later(res,700);}}else{mist++;sfx('bad');draw();}});}
+      draw();});}
+  closeModal();return mist;}
+const ZHI3=['到、往','代名詞','助詞'];
+const ZHI=[
+ {q:'「吾欲之南海」的「之」是？',a:0},{q:'「置之不理」的「之」是？',a:1},{q:'「赤子之心」的「之」是？',a:2},
+ {q:'「虎求百獸而食之」的「之」是？',a:1},{q:'「遂與之行」的「之」是？',a:1},{q:'「獸見之皆走」的「之」是？',a:1},
+ {q:'「觀百獸之見我」的「之」是？',a:2},{q:'「送孟浩然之廣陵」的「之」是？',a:0}
+].map(x=>Object.assign(x,{opts:ZHI3}));
+['吾欲之南海：「之」是到、往，想前往南海。','置之不理：「之」是代名詞，代替人或事物。','赤子之心：「之」是助詞，相當於白話的「的」。','「之」是代名詞，在此指「百獸」。','「之」是代名詞，在此指「狐狸」。','「之」是代名詞，在此指「老虎」。','「之」是助詞，沒有特別的意思。','送孟浩然之廣陵：「之」是到、往，前往廣陵。'].forEach((w,i)=>{ZHI[i].why=w;});
+const QZ13=[
+ {q:'【推論】狐狸為什麼聲稱自己是天帝派來管理百獸的？',opts:['為了避免被老虎吃掉','想當百獸之王','想幫助老虎','想考驗老虎'],a:0,why:'狐狸說的不是事實，他是為了避免被老虎吃掉，才有這樣的舉動。'},
+ {q:'【提取訊息】老虎為什麼誤以為百獸害怕狐狸？',opts:['牠跟在狐狸後面，看到百獸一見到他們就逃跑','狐狸比老虎更兇','百獸向狐狸行禮','天帝出現了'],a:0,why:'老虎跟在狐狸後面，看到百獸見到他們就逃跑，於是誤以為動物們害怕狐狸。'},
+ {q:'【詮釋整合】老虎的問題是什麼？',opts:['盲目跟從，沒有分辨的能力','太膽小','不夠強壯','不喜歡吃野獸'],a:0,why:'老虎地位高卻缺乏判斷，容易受騙，可以說是盲目跟從，沒有分辨的能力。'},
+ {q:'【比較評估】這則寓言提醒我們什麼？',opts:['對各種事物不可只看表面，要深入觀察、思考，才不會被表象蒙蔽','權勢越大越值得相信','遇到危險就要逃跑','要多交朋友'],a:0,why:'多元思考提醒我們要破除表象、換位思考。'}
+];
+
+const ITEMS=[['鏡','明察鏡','看清事情的真相'],['燈','思考燈','照亮沒想過的地方'],['盤','辨偽盤','分辨真話與假話'],['換','換位鏡','站在別人的位置想一想'],['令','獨立令','不人云亦云，自己思考']];
+const itemN=()=>Math.min(5,save.res.slice(2,7).filter(Boolean).length);
+async function cancelable(p){const cp=new Promise(r=>{cancelRes=()=>r(null);});const r=await Promise.race([p.then(v=>({v})),cp]);cancelRes=null;if(!r)closeModal();return r;}
+async function startGate(dir){busy=true;wps=[];gateCd=performance.now()+6000;
+  const push=()=>{player.position.x=dir==='E'?2.8:12.8;wps=[];};
+  if(dir==='E'&&!(save.res[0]&&save.res[1])){await say('巨獸使者',['吼——站住！我是橋頭的巨獸使者。','過橋以前，先去楚宮和宮門外把事情問清楚，再來找我。']);push();busy=false;return;}
+  if(dir==='W'&&!save.broken){await say('巨獸使者',['吼——站住！要回楚國，得先帶齊 5 件寶物。','你現在只有 '+itemN()+' 件，繼續去找吧。']);push();busy=false;return;}
+  await say('巨獸使者',dir==='E'?['吼——站住！我是橋頭的巨獸使者。','要去百獸村，先回答我三個問題。']:['吼——寶物齊了！','要回楚國，請先回答我兩個問題。']);
+  const qs=dir==='E'?shuffle(QGATE).slice(0,3):QGATE2;
+  const r=await cancelable(runQuiz(qs,{title:'巨獸使者的問題'}));
+  if(!r){push();busy=false;toast('要過橋，就得回答問題。',3000);return;}
+  if(dir==='E')save.gateE=true;else save.gateW=true;store();applyBridge();sfx('token');
+  await say('巨獸使者',dir==='E'?['答得好！請過橋吧。','橋的另一頭是百獸村，那裡的事，可沒有表面看起來那麼簡單。']:['答得好！寶物也齊了，過橋吧。','過了橋，你就會變回原來的樣子。']);
+  busy=false;}
+async function startTransform(){busy=true;wps=[];sfx('token');
+  await say('旁白',['你一腳踏進百獸村，身體忽然一陣發熱……','這個村子裡，狐狸正在騙老虎，老虎也正盯著狐狸。你要變成誰？']);
+  modal('<div class="mhead"><span>變身</span></div><p class="q" style="margin:.2em 0 .8em">你要變成誰？</p><div class="opts"><button class="opt" id="fmT">變成老虎：幫助老虎識破狐狸的計謀</button><button class="opt" id="fmF">變成狐狸：逃脫老虎的捕食</button></div>',true);
+  const form=await new Promise(res=>{$('#fmT').onclick=()=>res('tiger');$('#fmF').onclick=()=>res('fox');});
+  closeModal();save.form=form;store();setLook();applyBridge();sfx('token');hud();
+  await say('旁白',form==='tiger'?['你變成了老虎！','每完成一關，就能取得一件寶物。集滿 5 件，就能識破狐狸的計謀。','集滿之後，回到橋頭，通過巨獸使者的問題，才能回楚國。']:['你變成了狐狸！','每完成一關，就能取得一件寶物。集滿 5 件，就能逃出老虎的捕食。','集滿之後，回到橋頭，通過巨獸使者的問題，才能回楚國。']);
+  busy=false;}
+async function startRevert(){busy=true;wps=[];
+  await say('旁白',['橋的另一頭，光芒包住了你……','你變回了原來的樣子！','快到楚宮，向楚宣王匯報吧。']);
+  save.form=null;store();setLook();sfx('token');applyProgress();hud();busy=false;}
+async function breakTrick(){save.broken=true;store();sfx('token');
+  await say('旁白',save.form==='tiger'?['五件寶物同時發出光芒！','你看清楚了：百獸害怕的是你自己，不是狐狸。','狐狸的計謀被識破，他嚇得轉身逃走。','帶著寶物回到橋頭，通過巨獸使者的問題，就能過橋變回原來的樣子。']:['五件寶物同時發出光芒！','老虎被光芒晃得睜不開眼，你趁機逃出了牠的利爪。','你成功逃脫了老虎的捕食。','帶著寶物回到橋頭，通過巨獸使者的問題，就能過橋變回原來的樣子。']);
+  applyProgress();hud();toast('寶物集齊了！回橋頭去。',4000);}
+function goalText(){const c=curLv();
+  if(save.broken&&save.form)return '寶物集齊！回橋頭，回答巨獸使者的問題，過橋變回原樣';
+  if(c<0)return '全部完成！按「選關」可回頭再玩';
+  if(c>=2&&c<=6&&!save.form)return '前往橋頭，回答巨獸使者的問題，過橋去百獸村';
+  if(c>=2&&c<=6)return '取得寶物 '+itemN()+' / 5：第 '+(c+1)+' 關「'+PLAN[c].name+'」';
+  if(c===7)return '回楚宮，向楚宣王匯報：第 8 關「'+PLAN[7].name+'」';
+  return '目標：第 '+(c+1)+' 關「'+PLAN[c].name+'」';}
+async function playLevel(i){busy=true;wps=[];++lvTok;const N0=NPCS[i],replay=!!save.res[i];
+  let cancelled=false;const cancelP=new Promise(r=>{cancelRes=()=>{cancelled=true;r();};});
+  if(replay)toast('回頭複習：'+PLAN[i].name,2000);else await say(N0.name,N0.open);
+  const run=(async()=>{
+    switch(i){
+      case 0:return runQuiz(QZ1,{title:'戰國策與楚宮'});
+      case 1:return runQuiz(QBG2,{title:'楚王問緣由'});
+      case 2:return runQuiz(shuffle(CLS),{title:'文言分類：老虎、百獸、狐狸',fixed:true,gauge:true});
+      case 3:{const a=await runSeq();const b=await runQuiz(QZ3,{title:'百獸點名：問答'});return a+b;}
+      case 4:return runQuiz(FILL,{title:'原文填空',hint:true});
+      case 5:return runMatch();
+      case 6:return runSpeed();
+      case 7:{const a=await runOrder();const b=await runSentence();return a+b;}
+      case 8:{const a=await runScramble();const b=await runWordBank();const c=await runProof();return a+b+c;}
+      default:{const a=await runSpeed(ZHI,'之字分類',45000,true);const b=await runQuiz(QZ13,{title:'閱讀思辨',hint:true});return a+b;}}})();
+  const r=await Promise.race([run.then(v=>({v})),cancelP.then(()=>null)]);
+  cancelRes=null;setDuck(1);
+  if(r)closeModal();
+  if(!r||cancelled){closeModal();busy=false;hud();toast('已離開關卡，離開圓圈再走回來，就能重新挑戰。',3500);return;}
+  const mist=r.v,score=pct(mist);
+  if(replay){const old=save.res[i];if(score>=old.score)save.res[i]={score,mistakes:mist};store();hud();
+    sfx('token');const tp=$('#tokenPop');tp.innerHTML='<div><b>'+PLAN[i].tk+'</b>複習完成<br>本次得分 '+score+'（最佳 '+save.res[i].score+'）</div>';tp.hidden=false;await sleep(2200);tp.hidden=true;busy=false;return;}
+  save.res[i]={score,mistakes:mist};store();
+  const raw=save.res.slice(2,7).filter(Boolean).length;let extra='';
+  if(save.form&&i>=2&&i<=6){const it=ITEMS[raw-1];extra='<br>取得寶物：「'+it[1]+'」（'+raw+' / 5）';}
+  sfx('token');const tp=$('#tokenPop');tp.innerHTML='<div><b>'+PLAN[i].tk+'</b>獲得信物「'+PLAN[i].tkName+'」<br>本關得分 '+score+'（失誤 '+mist+' 次）'+extra+'</div>';tp.hidden=false;await sleep(2400);tp.hidden=true;
+  await say(N0.name,N0.close);
+  applyProgress();hud();
+  if(i===0){player.position.set(-24,0,-11.5);wps=[];armed=true;toast('你走出了楚宮大門。',3000);}
+  if(save.form&&!save.broken&&raw>=5)await breakTrick();
+  busy=false;
+  if(doneN()>=BUILT){await sleep(300);openSummary();}}
+function interact(){if(busy||mode!=='game')return;const n=nearLv();if(n<0){toast('走近發光圓圈，才能互動。');return;}playLevel(n);}
+
+/* ================= HUD 與總結 ================= */
+function hudItems(){const e=$('#hudItems');if(!save.form&&!save.broken){e.hidden=true;return;}const n=itemN();e.hidden=false;
+  e.innerHTML='<div style="font-size:.8rem">'+(save.form==='fox'?'狐狸的寶物':save.form==='tiger'?'老虎的寶物':'寶物')+(save.broken?'　已集齊':'')+'</div><div style="display:flex;gap:4px">'+ITEMS.map((x,i)=>'<span class="tk'+(i<n?' done':'')+'" title="'+x[1]+'：'+x[2]+'">'+(i<n?x[0]:'?')+'</span>').join('')+'</div>';}
+function hud(){hudItems();$('#hudName').textContent=save.name;$('#hudScore').textContent=totalScore();
+  const c=curLv();$('#hudGoal').textContent=goalText();
+  $('#hudTokens').innerHTML=PLAN.map((p,i)=>'<span class="tk '+(save.res[i]?'done':(i===c?'next':''))+'" title="第 '+(i+1)+' 關 '+p.name+(p.built?'':'（尚未製作）')+'">'+(save.res[i]?p.tk:(i+1))+'</span>').join('');}
+function grade(t){return t>=1000?'SSS':t>=990?'SS':t>=900?'S':t>=800?'A':t>=700?'B':t>=500?'C':t>=200?'D':'N';}
+function openSummary(){const done=save.res.slice(0,BUILT).filter(Boolean),max=BUILT*100,tot=totalScore();
+  $('#sumTotal').textContent=tot+' / '+max;{const g=grade(tot);const ge=$('#sumGrade');ge.textContent=g;ge.className='grade g-'+g;}
+  $('#sumNote').textContent=done.length>=BUILT?'全部 '+BUILT+' 關都完成了！回到地圖，按「選關」可以回頭再玩。':'還有關卡沒完成，回到地圖繼續吧。';
+  if(save.broken)$('#sumNote').textContent+='　寶物集齊，任務完成！';
+  $('#sumRows').innerHTML=PLAN.map((p,i)=>'<div><span>第 '+(i+1)+' 關　'+p.name+'</span><span>'+(save.res[i]?save.res[i].score+' 分（失誤 '+save.res[i].mistakes+'）':(p.built?'未完成':'尚未製作'))+'</span></div>').join('');
+  show('summary');}
+$('#btnSum').onclick=()=>{ac();if(!busy)openSummary();};
+$('#sumBack').onclick=()=>{sfx('click');enterGame();};
+let rc2=false;$('#sumReset').onclick=function(){if(!rc2){rc2=true;this.textContent='再按一次確認清除存檔';setTimeout(()=>{rc2=false;this.textContent='重新開始';},3000);return;}rc2=false;resetSave();placePlayer();setLook();applyProgress();this.textContent='重新開始';coverState();show('cover');};
+
+function enterGame(){applyProgress();hud();show('game');busy=false;wps=[];syncAudioBtns();
+  cam.t.set(player.position.x,1.2,player.position.z);cam.dist=20;
+  toast('方向鍵或 W A S D 移動，也能點地面行走。Q／E／R／T 轉視角。走近發光圓圈按「互動」或 F，答題時可按 Esc 離開。',6500);}
+
+/* 初始化 */
+applyProgress();coverState();syncAudioBtns();
+window.__game={A,place:(x,z)=>{player.position.set(x,0,z);},save:()=>save,startGate,applyBridge,startRevert,breakTrick,pos:()=>[player.position.x,player.position.z],startTransform,abortLevel,show,enterGame,startStory,snap,state:()=>({mode,busy,res:save.res}),playLevel};
+})();
+</script>
+
+</body></html>
